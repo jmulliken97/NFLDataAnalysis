@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import QMessageBox
 from webscraper import get_player_stats, scrape_all
 from data_processor import DataProcessor
 
@@ -57,6 +58,10 @@ class Ui_MainWindow(object):
         # JSON Viewer tab
         self.json_tab = QtWidgets.QWidget()
         self.json_tab.setObjectName("json_tab")
+
+        self.comboBox_sort_column = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_sort_column.setGeometry(QtCore.QRect(190, 60, 141, 31))
+        self.comboBox_sort_column.setObjectName("comboBox_sort_column")
         
         self.lineEdit_player_names = QtWidgets.QLineEdit(self.json_tab)
         self.lineEdit_player_names.setGeometry(QtCore.QRect(40, 20, 211, 31))
@@ -92,8 +97,8 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "ESPN NFL Stats Scraper"))
-        self.label.setText(_translate("MainWindow", "Enter ESPN NFL URL:"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
+        self.label.setText(_translate("MainWindow", "Enter NFL URL:"))
         self.label_player.setText(_translate("MainWindow", "Enter Player Name:"))
         self.pushButton.setText(_translate("MainWindow", "Scrape"))
         self.pushButton_all.setText(_translate("MainWindow", "Scrape All"))
@@ -104,6 +109,7 @@ class Ui_MainWindow(object):
         self.pushButton.clicked.connect(self.scrape_espn)
         self.pushButton_all.clicked.connect(self.scrape_all_data)
         self.pushButton_load.clicked.connect(self.load_json_file)
+        self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_plot.clicked.connect(self.plot_stats)
 
     def scrape_espn(self):
@@ -118,9 +124,19 @@ class Ui_MainWindow(object):
         url = self.lineEdit.text()
         stat_type = self.comboBox.currentText()
         scrape_all(url, stat_type)
+        QMessageBox.information(self.centralwidget, "Success", f"{stat_type.capitalize()} data scraped successfully.")
 
     def load_json_file(self):
         self.data_processor.load_json()
+        sortable_columns = self.data_processor.get_sortable_columns()
+        self.comboBox_sort_column.clear()  # Clear the old items
+        self.comboBox_sort_column.addItems(["No Sort"] + sortable_columns)
+
+
+    def sort_dataframe(self):
+        sort_by = self.comboBox_sort_column.currentText()
+        sort_order = self.comboBox_sort.currentText()
+        self.data_processor.sort_dataframe(sort_by, sort_order)
 
     def plot_stats(self):
         player_names = [name.strip() for name in self.lineEdit_player_names.text().split(',')]

@@ -1,111 +1,81 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-import json
-from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-
-service = Service(ChromeDriverManager().install())
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
+import requests
+import json
 
 def get_player_stats(url, stat_type, player_name):
-    
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.get(url)
-    
-    html = driver.page_source
-    print("HTML Content:\n", html[:500])  # Only printing first 500 characters for brevity
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'lxml')
 
-    soup = BeautifulSoup(html, 'lxml')
-    print("Soup Content:\n", str(soup)[:500])  # Only printing first 500 characters for brevity
+    rows = soup.find_all('tr')
 
-    tables = soup.find_all('table', class_='Table')
-    print("Tables found: ", len(tables))
+    if not rows:
+        print('No rows found.')
+        return "No rows found."
 
-    # if no tables found, return a message
-    if not tables:
-        print('No tables found.')
-        return "No tables found."
-
-    # Headers for different stat types
     headers_dict = {
-        "passing": ['POS', 'GP', 'CMP', 'ATT', 'CMP%', 'YDS', 'AVG', 'YDS/G', 'LNG', 'TD', 'INT', 'SACK', 'SYL', 'QBR', 'RTG'],
-        "rushing": ['POS', 'GP', 'ATT', 'YDS', 'AVG', 'LNG', 'BIG', 'TD', 'YDS/G', 'FUM', 'LST', 'FD'],
-        "receiving": ['POS', 'GP', 'REC', 'TGTS', 'YDS', 'AVG', 'TD', 'LNG', 'BIG', 'YDS/G', 'FUM', 'LST', 'YAC', 'FD']
+        "passing": ['Player', 'Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY'],
+        "rushing": ['Player', 'Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM'],
+        "receiving": ['Player', 'Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
     }
+
     headers = headers_dict[stat_type]
 
     player_stats = {}
 
-    for table in tables:
-        for row in table.tbody.find_all('tr'):
-            name_td = row.find('td', attrs={'data-idx': '1'})
-            if name_td is None:
-                continue
-            name = name_td.text
+    for row in rows:
+        cells = row.find_all('td')
 
-            if name != player_name:  # Skip if the name is not the desired player
-                continue
+        if not cells or cells[0].text.strip() != player_name:
+            continue
 
-            stats = {}
-            for idx, td in enumerate(row.find_all('td')):
-                if idx > 1:  # Skip RK and Name tds
-                    stat_name = headers[idx-2]  # -2 because we skipped RK and Name
-                    stats[stat_name] = td.text
-            player_stats[name] = stats
-            break  # Once we have found our player, we can break the loop
+        stats = {}
+        for idx, cell in enumerate(cells):
+            stat_name = headers[idx]
+            stats[stat_name] = cell.text.strip()
 
-    # Don't forget to quit the browser
-    driver.quit()
+        player_stats[player_name] = stats
+        break
 
     return player_stats
 
 
 def scrape_all(url, stat_type):
-    
-    driver = webdriver.Chrome(service=service, options=options)
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'lxml')
 
+    rows = soup.find_all('tr')
 
-    driver.get(url)
-    
-    html = driver.page_source
-    print("HTML Content:\n", html[:500])  # Only printing first 500 characters for brevity
-
-    soup = BeautifulSoup(html, 'lxml')
-    print("Soup Content:\n", str(soup)[:500])  # Only printing first 500 characters for brevity
-
-    tables = soup.find_all('table', class_='Table')
-    print("Tables found: ", len(tables))
-
-    # Headers for different stat types
     headers_dict = {
-        "passing": ['POS', 'GP', 'CMP', 'ATT', 'CMP%', 'YDS', 'AVG', 'YDS/G', 'LNG', 'TD', 'INT', 'SACK', 'SYL', 'QBR', 'RTG'],
-        "rushing": ['POS', 'GP', 'ATT', 'YDS', 'AVG', 'LNG', 'BIG', 'TD', 'YDS/G', 'FUM', 'LST', 'FD'],
-        "receiving": ['POS', 'GP', 'REC', 'TGTS', 'YDS', 'AVG', 'TD', 'LNG', 'BIG', 'YDS/G', 'FUM', 'LST', 'YAC', 'FD']
+        "passing": ['Player', 'Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY'],
+        "rushing": ['Player', 'Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM'],
+        "receiving": ['Player', 'Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
     }
+
     headers = headers_dict[stat_type]
 
     all_stats = {}
 
-    for table in tables:
-        for row in table.tbody.find_all('tr'):
-            name_td = row.find('td', attrs={'data-idx': '1'})
-            if name_td is None:
-                continue
-            name = name_td.text
+    for row in rows:
+        cells = row.find_all('td')
 
-            stats = {}
-            for idx, td in enumerate(row.find_all('td')):
-                if idx > 1:  # Skip RK and Name tds
-                    stat_name = headers[idx-2]  # -2 because we skipped RK and Name
-                    stats[stat_name] = td.text
-            all_stats[name] = stats
+        if not cells:
+            continue
 
-    # Don't forget to quit the browser
-    driver.quit()
+        name = cells[0].text.strip()
 
-    # save all stats to a file
-    with open(f'{stat_type}_stats.json', 'w') as f:
-        json.dump(all_stats, f)
+        stats = {}
+        for idx, cell in enumerate(cells):
+            stat_name = headers[idx]
+            stats[stat_name] = cell.text.strip()
 
-    print(f"All {stat_type} stats have been saved to {stat_type}_stats.json")
+        all_stats[name] = stats
+
+    # Write the results to a JSON file
+    with open(f'{stat_type}_stats.json', 'w') as json_file:
+        json.dump(all_stats, json_file)
+
+    return all_stats
+
+
+
+
