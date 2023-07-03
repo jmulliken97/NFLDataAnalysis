@@ -4,20 +4,20 @@ ESPN NFL Stats Scraper is a Python-based project that allows you to scrape playe
 # Project Structure 
 This project is made up of three main components:
 
-## The GUI: Built with PyQt5, this provides a user-friendly way to input parameters (such as the URL of the stats page, the player's name, and the type of stats to scrape), trigger the scraping process, and view the results.
+The GUI: Built with PyQt5, this provides a user-friendly way to input parameters (such as the URL of the stats page, the player's name, and the type of stats to scrape), trigger the scraping process, and view the results.
 
-## The Scraper: Utilizing Selenium and BeautifulSoup, the scraper accesses the ESPN NFL webpage, locates the appropriate table of stats, and extracts the requested information.
+The Scraper: Utilizing Selenium and BeautifulSoup, the scraper accesses the ESPN NFL webpage, locates the appropriate table of stats, and extracts the requested information.
 
-## Data Processor: This component is responsible for loading and saving JSON files as well as plotting data.
+Data Processor: This component is responsible for loading and saving JSON files as well as plotting data.
 
 **The project also includes webdriver_manager to handle ChromeDriver installation automatically, which is required by Selenium.**
 
 ```
-- pip install PyQt5
-- pip install selenium
-- pip install beautifulsoup4
-- pip install matplotlib
-- pip install pandas
+pip install PyQt5
+pip install selenium
+pip install beautifulsoup4
+pip install matplotlib
+pip install pandas
 ```
 
 #Usage
