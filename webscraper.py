@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 import json
+import os
 
 def get_player_stats(url, stat_type, player_name):
     response = requests.get(url)
@@ -43,6 +44,9 @@ def scrape_all(url, stat_type):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'lxml')
 
+    # Extract the year from the URL
+    year = url.split('/')[7]
+
     rows = soup.find_all('tr')
 
     headers_dict = {
@@ -53,7 +57,7 @@ def scrape_all(url, stat_type):
 
     headers = headers_dict[stat_type]
 
-    all_stats = {}
+    new_stats = {}
 
     for row in rows:
         cells = row.find_all('td')
@@ -68,13 +72,32 @@ def scrape_all(url, stat_type):
             stat_name = headers[idx]
             stats[stat_name] = cell.text.strip()
 
-        all_stats[name] = stats
+        new_stats[name] = stats
 
-    # Write the results to a JSON file
-    with open(f'{stat_type}_stats.json', 'w') as json_file:
+    json_file_path = f'{stat_type}_stats.json'
+
+    all_stats = {}
+
+    # If the JSON file already exists, load its data
+    if os.path.exists(json_file_path):
+        with open(json_file_path, 'r') as json_file:
+            all_stats = json.load(json_file)
+
+    # Ensure the year exists in the dictionary
+    if year not in all_stats:
+        all_stats[year] = {}
+
+    all_stats[year].update(new_stats)
+
+    # Write the updated data back to the JSON file
+    with open(json_file_path, 'w') as json_file:
         json.dump(all_stats, json_file)
 
     return all_stats
+
+
+
+
 
 
 

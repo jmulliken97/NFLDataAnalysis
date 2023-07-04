@@ -4,8 +4,9 @@ from webscraper import get_player_stats, scrape_all
 from data_processor import DataProcessor
 
 class Ui_MainWindow(object):
-    def __init__ (self):
-        self.data_processor = DataProcessor()  
+    def __init__(self):
+        self.textEdit = QtWidgets.QTextEdit()  
+        self.data_processor = DataProcessor(self.textEdit)  
         
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -70,6 +71,10 @@ class Ui_MainWindow(object):
         self.lineEdit_stat_columns = QtWidgets.QLineEdit(self.json_tab)
         self.lineEdit_stat_columns.setGeometry(QtCore.QRect(40, 50, 211, 31))
         self.lineEdit_stat_columns.setObjectName("lineEdit_stat_columns")
+        
+        self.textEdit = QtWidgets.QTextEdit(self.json_tab)
+        self.textEdit.setGeometry(QtCore.QRect(40, 60, 711, 491))
+        self.data_processor = DataProcessor(self.textEdit)
 
         # add widgets to the json tab
         self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
@@ -87,6 +92,10 @@ class Ui_MainWindow(object):
         self.comboBox_sort.setGeometry(QtCore.QRect(190, 20, 141, 31))
         self.comboBox_sort.addItems(["No Sort", "Ascending", "Descending"])
         self.comboBox_sort.setObjectName("comboBox_sort")
+        
+        self.label_filename = QtWidgets.QLabel(self.centralwidget)
+        self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
+        self.label_filename.setText("No file loaded.")
 
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "JSON Viewer")
@@ -129,9 +138,9 @@ class Ui_MainWindow(object):
     def load_json_file(self):
         self.data_processor.load_json()
         sortable_columns = self.data_processor.get_sortable_columns()
-        self.comboBox_sort_column.clear()  # Clear the old items
+        self.comboBox_sort_column.clear() 
         self.comboBox_sort_column.addItems(["No Sort"] + sortable_columns)
-
+        self.label_filename.setText(f"Loaded file: {self.data_processor.get_file_name()}")  # Display the loaded file's name
 
     def sort_dataframe(self):
         sort_by = self.comboBox_sort_column.currentText()
@@ -139,6 +148,30 @@ class Ui_MainWindow(object):
         self.data_processor.sort_dataframe(sort_by, sort_order)
 
     def plot_stats(self):
-        player_names = [name.strip() for name in self.lineEdit_player_names.text().split(',')]
-        stat_columns = [column.strip() for column in self.lineEdit_stat_columns.text().split(',')]
-        self.data_processor.plot_stats(stat_columns, player_names) 
+        players = []
+        stats = []
+
+        while True:
+            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
+            if ok1:
+                players.append(player)
+                add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another player?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                if add_another == QtWidgets.QMessageBox.No:
+                    break
+            else:
+                break
+
+        while True:
+            stat, ok2 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_stat_columns(), editable=False)
+            if ok2:
+                stats.append(stat)
+                add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another stat?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                if add_another == QtWidgets.QMessageBox.No:
+                    break
+            else:
+                break
+
+        self.data_processor.plot_stats(stats, players)
+
+
+ 
