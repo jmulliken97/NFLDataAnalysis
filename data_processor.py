@@ -15,6 +15,11 @@ class DataProcessor:
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
                 self.data_df = pd.DataFrame(data).transpose()
+            
+                # Remove the 'Player' column from the DataFrame if it exists
+                if 'Player' in self.data_df.columns:
+                    self.data_df.drop(columns=['Player'], inplace=True)
+
                 self.textEdit.setText(self.data_df.to_string())
                 
     def get_file_name(self):

@@ -2,6 +2,7 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from webscraper import get_player_stats, scrape_all
 from data_processor import DataProcessor
+import os
 
 class Ui_MainWindow(object):
     def __init__(self):
@@ -140,7 +141,7 @@ class Ui_MainWindow(object):
         sortable_columns = self.data_processor.get_sortable_columns()
         self.comboBox_sort_column.clear() 
         self.comboBox_sort_column.addItems(["No Sort"] + sortable_columns)
-        self.label_filename.setText(f"Loaded file: {self.data_processor.get_file_name()}")  # Display the loaded file's name
+        self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")  # Display the loaded file's name
 
     def sort_dataframe(self):
         sort_by = self.comboBox_sort_column.currentText()
