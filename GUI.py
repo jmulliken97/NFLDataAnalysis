@@ -62,37 +62,24 @@ class Ui_MainWindow(object):
         self.json_tab.setObjectName("json_tab")
 
         self.comboBox_sort_column = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_sort_column.setGeometry(QtCore.QRect(190, 60, 141, 31))
+        self.comboBox_sort_column.setGeometry(QtCore.QRect(190, 100, 141, 31))
         self.comboBox_sort_column.setObjectName("comboBox_sort_column")
         
-        self.lineEdit_player_names = QtWidgets.QLineEdit(self.json_tab)
-        self.lineEdit_player_names.setGeometry(QtCore.QRect(40, 20, 211, 31))
-        self.lineEdit_player_names.setObjectName("lineEdit_player_names")
-        
-        self.lineEdit_stat_columns = QtWidgets.QLineEdit(self.json_tab)
-        self.lineEdit_stat_columns.setGeometry(QtCore.QRect(40, 50, 211, 31))
-        self.lineEdit_stat_columns.setObjectName("lineEdit_stat_columns")
-        
-        self.textEdit = QtWidgets.QTextEdit(self.json_tab)
-        self.textEdit.setGeometry(QtCore.QRect(40, 60, 711, 491))
-        self.data_processor = DataProcessor(self.textEdit)
+        self.tableWidget = QtWidgets.QTableWidget(self.json_tab)
+        self.tableWidget.setGeometry(QtCore.QRect(40, 60, 711, 491))
 
         # add widgets to the json tab
         self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_load.setGeometry(QtCore.QRect(350, 20, 89, 25))
+        self.pushButton_load.setGeometry(QtCore.QRect(500, 20, 89, 25))
         self.pushButton_load.setObjectName("pushButton_load")
-
-        self.textEdit = QtWidgets.QTextEdit(self.json_tab)
-        self.textEdit.setGeometry(QtCore.QRect(40, 60, 711, 491))
+        
+        self.comboBox_year = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_year.setGeometry(QtCore.QRect(40, 20, 211, 31))
+        self.comboBox_year.setObjectName("comboBox_year")
 
         self.pushButton_plot = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_plot.setGeometry(QtCore.QRect(450, 20, 89, 25))
+        self.pushButton_plot.setGeometry(QtCore.QRect(600, 20, 89, 25))
         self.pushButton_plot.setObjectName("pushButton_plot")
-
-        self.comboBox_sort = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_sort.setGeometry(QtCore.QRect(190, 20, 141, 31))
-        self.comboBox_sort.addItems(["No Sort", "Ascending", "Descending"])
-        self.comboBox_sort.setObjectName("comboBox_sort")
         
         self.label_filename = QtWidgets.QLabel(self.centralwidget)
         self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
@@ -121,6 +108,7 @@ class Ui_MainWindow(object):
         self.pushButton_load.clicked.connect(self.load_json_file)
         self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_plot.clicked.connect(self.plot_stats)
+        self.comboBox_year.currentIndexChanged.connect(self.update_table)
 
     def scrape_espn(self):
         url = self.lineEdit.text()
@@ -138,17 +126,46 @@ class Ui_MainWindow(object):
 
     def load_json_file(self):
         self.data_processor.load_json()
-        sortable_columns = self.data_processor.get_sortable_columns()
-        self.comboBox_sort_column.clear() 
-        self.comboBox_sort_column.addItems(["No Sort"] + sortable_columns)
+        print(self.data_processor.data_dict)  # Print the data_dict
+        self.comboBox_year.clear()
+        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys()))
         self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")  # Display the loaded file's name
 
+        year = self.comboBox_year.currentText()  # Get the selected year
+        data_df = self.data_processor.data_dict[year]  # Get the DataFrame for the selected year
+        print(data_df)  # Print the DataFrame
+
+    # Fill the QTableWidget with the data from the DataFrame
+        self.tableWidget.setRowCount(len(data_df))
+        self.tableWidget.setColumnCount(len(data_df.columns))
+        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
+        print(self.tableWidget.rowCount())
+        print(self.tableWidget.columnCount())
+        for i, (index, row) in enumerate(data_df.iterrows()):
+            for j, value in enumerate(row):
+                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
+
+
+
     def sort_dataframe(self):
+        year = self.comboBox_year.currentText()
         sort_by = self.comboBox_sort_column.currentText()
         sort_order = self.comboBox_sort.currentText()
-        self.data_processor.sort_dataframe(sort_by, sort_order)
+        self.data_processor.sort_dataframe(year, sort_by, sort_order)
+        self.update_table()  # Update the table after sorting
+        
+    def update_table(self):
+        year = self.comboBox_year.currentText()
+        data_df = self.data_processor.data_dict[year]
+        self.tableWidget.setRowCount(len(data_df))
+        self.tableWidget.setColumnCount(len(data_df.columns))
+        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
+        for i, (index, row) in enumerate(data_df.iterrows()):
+            for j, cell in enumerate(row):
+                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))    
 
     def plot_stats(self):
+        year = self.comboBox_year.currentText()
         players = []
         stats = []
 

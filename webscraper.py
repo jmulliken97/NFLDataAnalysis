@@ -70,7 +70,15 @@ def scrape_all(url, stat_type):
         stats = {}
         for idx, cell in enumerate(cells):
             stat_name = headers[idx]
-            stats[stat_name] = cell.text.strip()
+            stat_value = cell.text.strip()
+
+            # Try to convert the stat value to a float
+            try:
+                stat_value = float(stat_value)
+            except ValueError:
+                pass  # If it can't be converted to a float, leave it as a string
+
+            stats[stat_name] = stat_value
 
         new_stats[name] = stats
 
@@ -94,11 +102,5 @@ def scrape_all(url, stat_type):
         json.dump(all_stats, json_file)
 
     return all_stats
-
-
-
-
-
-
 
 
