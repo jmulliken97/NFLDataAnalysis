@@ -196,6 +196,7 @@ class Ui_MainWindow(object):
         text_edit.setReadOnly(True)
 
         # Display the legend
+        text_edit.append("<b><u>Passing Stats:</u></b>")
         text_edit.append("<b>Pass Yds:</b> Total passing yards")
         text_edit.append("<b>Yds/Att:</b> Yards per attempt")
         text_edit.append("<b>Att:</b> Number of attempts")
@@ -214,7 +215,7 @@ class Ui_MainWindow(object):
         text_edit.append("<b>TD:INT Ratio:</b> Ratio of touchdowns to interceptions")
         text_edit.append("<b>ANY/A:</b> Adjusted net yards per pass attempt")
         
-        text_edit.append("\n<b>Rushing Stats:</b>")
+        text_edit.append("\n<b><u>Rushing Stats:</u></b>")
         text_edit.append("<b>Rush Yds:</b> Total rushing yards")
         text_edit.append("<b>Att:</b> Number of attempts")
         text_edit.append("<b>TD:</b> Number of touchdowns")
@@ -224,12 +225,30 @@ class Ui_MainWindow(object):
         text_edit.append("<b>Rush 1st:</b> Number of first downs")
         text_edit.append("<b>Rush 1st%:</b> First down percentage")
         text_edit.append("<b>Rush FUM:</b> Number of fumbles")
+        
+        text_edit.append("\n<b><u>Receiving Stats:</u></b>")
+        text_edit.append("<b>Rec:</b> Number of receptions")
+        text_edit.append("<b>Yds:</b> Total receiving yards")
+        text_edit.append("<b>TD:</b> Number of receiving touchdowns")
+        text_edit.append("<b>20+:</b> Number of 20+ yards receptions")
+        text_edit.append("<b>40+:</b> Number of 40+ yards receptions")
+        text_edit.append("<b>LNG:</b> Longest reception")
+        text_edit.append("<b>Rec 1st:</b> Number of first downs from receptions")
+        text_edit.append("<b>1st%:</b> Percentage of receptions for first downs")
+        text_edit.append("<b>Rec FUM:</b> Number of fumbles during receptions")
+        text_edit.append("<b>Rec YAC/R:</b> Average yards after catch per reception")
+        text_edit.append("<b>Tgts:</b> Number of times targeted by the quarterback")
+
+    
 
         dialog.exec_()
         
     def compare_stats(self):
         year = self.comboBox_year.currentText()
-        players = []
+        stats = self.comboBox_sort_options.currentText()
+        players = self.lineEdit_player.text().split(",")  # Assuming players are separated by commas
+        comparison_results = self.data_processor.compare_stats(year, stats, players)
+        self.textEdit_player_stats.setText(comparison_results)
 
         while True:
             player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
@@ -245,22 +264,21 @@ class Ui_MainWindow(object):
         for player in players:
             player_data = self.data_processor.data_dict[year][self.data_processor.data_dict[year]['Player'] == player]
             if not player_data.empty:
-                player_scores[player] = self.data_processor.calculate_score(player_data.to_dict(orient='records')[0])
+                player_data_dict = player_data.to_dict(orient='records')[0]
+                stats_type = self.data_processor.determine_stats_type(player_data_dict)
+                if stats_type != "unknown":
+                    player_scores[player] = self.data_processor.calculate_score(player_data_dict, stats_type)
 
-        # Sort the players by their scores
         sorted_players = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
 
-        # Create a QDialog for the output
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Player Comparison")
         dialog.resize(400, 300)
 
-        # Create a QTextEdit inside the QDialog
         text_edit = QtWidgets.QTextEdit(dialog)
         text_edit.setGeometry(10, 10, 380, 280)
         text_edit.setReadOnly(True)
 
-        # Display the sorted players and their scores
         for player, score in sorted_players:
             text_edit.append(f"<b>{player}</b>: {score}")
 

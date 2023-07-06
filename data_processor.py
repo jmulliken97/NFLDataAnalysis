@@ -60,6 +60,21 @@ class DataProcessor:
                 "Rush 1st%": 0.15,
                 "Rush FUM": -0.1,
             }
+        
+        elif stats_type == "receiving":
+            weights = {
+                "Rec": 0.15,
+                "Yds": 0.15,
+                "TD": 0.2,
+                "20+": 0.05,
+                "40+": 0.05,
+                "LNG": 0.1,
+                "Rec 1st": 0.1,
+                "1st%": 0.1,
+                "Rec FUM": -0.1,
+                "Rec YAC/R": 0.05,
+                "Tgts": 0.05,
+            }
 
         score = 0
         for stat, weight in weights.items():
@@ -82,8 +97,8 @@ class DataProcessor:
         for year, players in data.items():
             for player, stats in players.items():
                 if isinstance(stats, dict):
-                    stats['Year'] = year  # Add the year to the stats
-                    stats['Player'] = player  # Add the player name to the stats
+                    stats['Year'] = year  
+                    stats['Player'] = player  
                     flattened_data.append(stats)
                 
         return pd.DataFrame(flattened_data)
