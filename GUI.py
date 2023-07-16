@@ -102,7 +102,7 @@ class Ui_MainWindow(object):
         self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
         self.comboBox_sort_order.setGeometry(QtCore.QRect(240, 20, 100, 31)) 
         self.comboBox_sort_order.addItems(["Descending", "Ascending"])
-        self.comboBox_sort_order.setObjectName("comboBox_sort_order")  
+        self.comboBox_sort_order.setObjectName("comboBox_sort_order")
  
 
         # add json tab to the tab widget
@@ -244,14 +244,14 @@ class Ui_MainWindow(object):
         dialog.exec_()
         
     def compare_stats(self):
-        year = self.comboBox_year.currentText()
-        stats = self.comboBox_sort_options.currentText()
-        players = self.lineEdit_player.text().split(",")  # Assuming players are separated by commas
-        comparison_results = self.data_processor.compare_stats(year, stats, players)
+        years = self.comboBox_year.currentText().split(",")  
+        stats = self.comboBox_sort_options.currentText().split(",") 
+        players = self.lineEdit_player.text().split(",")  
+        comparison_results = self.data_processor.compare_stats(stats, players, years)
         self.textEdit_player_stats.setText(comparison_results)
 
         while True:
-            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
+            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
             if ok1:
                 players.append(player)
                 add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another player?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
@@ -261,13 +261,14 @@ class Ui_MainWindow(object):
                 break
 
         player_scores = {}
-        for player in players:
-            player_data = self.data_processor.data_dict[year][self.data_processor.data_dict[year]['Player'] == player]
-            if not player_data.empty:
-                player_data_dict = player_data.to_dict(orient='records')[0]
-                stats_type = self.data_processor.determine_stats_type(player_data_dict)
-                if stats_type != "unknown":
-                    player_scores[player] = self.data_processor.calculate_score(player_data_dict, stats_type)
+        for year in years:
+            for player in players:
+                player_data = self.data_processor.data_dict[year][self.data_processor.data_dict[year]['Player'] == player]
+                if not player_data.empty:
+                    player_data_dict = player_data.to_dict(orient='records')[0]
+                    stats_type = self.data_processor.determine_stats_type(player_data_dict)
+                    if stats_type != "unknown":
+                        player_scores[player] = self.data_processor.calculate_score(player_data_dict, stats_type)
 
         sorted_players = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
 
@@ -284,14 +285,14 @@ class Ui_MainWindow(object):
 
         dialog.exec_()
 
-
     def plot_stats(self):
-        year = self.comboBox_year.currentText()
+        leagues = self.comboBox_league.currentText().split(",")  # Assuming leagues are separated by commas
+        years = self.comboBox_year.currentText().split(",")  
         players = []
         stats = []
 
         while True:
-            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
+            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
             if ok1:
                 players.append(player)
                 add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another player?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
@@ -310,7 +311,9 @@ class Ui_MainWindow(object):
             else:
                 break
 
-        self.data_processor.plot_stats(stats, players)
+        for league in leagues:
+            self.data_processor.set_league(league)  # Set the league in the DataProcessor
+            self.data_processor.plot_stats(stats, players, years)
 
 
  

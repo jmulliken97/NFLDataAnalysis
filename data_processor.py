@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from PyQt5 import QtWidgets
 import json
 import collections
@@ -8,6 +9,7 @@ class DataProcessor:
     def __init__(self, text_edit_widget):
         self.data_dict = {}
         self.textEdit = text_edit_widget
+        self.league = None
         
     def determine_stats_type(self, stats):
         passing_headers = ['Player', 'Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY']
@@ -122,16 +124,25 @@ class DataProcessor:
     def get_file_name(self):
         return self.file_name if hasattr(self, 'file_name') else 'No file loaded.'
     
-    def get_player_names(self, year):
-        if year in self.data_dict:
-            return self.data_dict[year]['Player'].unique().tolist()
-        return []
+    def get_player_names(self):
+        player_names = []
+        for year in self.data_dict:
+            player_names.extend(self.data_dict[year]['Player'].unique().tolist())
+        return list(set(player_names))
 
-    def get_stat_columns(self, year):
-        if year in self.data_dict:
-            return self.data_dict[year].columns.tolist()
-        return []
-    
+
+    def get_stat_columns(self, year=None):
+        if year:
+            if year in self.data_dict:
+                return self.data_dict[year].columns.tolist()
+            else:
+                return []
+        else:
+            all_stat_columns = set()
+            for df in self.data_dict.values():
+                all_stat_columns.update(df.columns.tolist())
+            return list(all_stat_columns)
+ 
     def sort_dataframe(self, year, sort_by, sort_order): 
         df = self.data_dict[year]
         if sort_order == "Ascending":
@@ -144,42 +155,38 @@ class DataProcessor:
             return self.data_dict[year].columns.tolist()
         return []
     
-    def compare_stats(self, year, stats, players):
-        comparison_results = ""
-        for player in players:
-            player_data = self.data_dict[year][self.data_dict[year]['Player'] == player]
-            if not player_data.empty:
-                comparison_results += f"Stats for {player}:\n"
-                for stat in stats:
-                    stat_value = player_data[stat].values[0]
-                    comparison_results += f"{stat}: {stat_value}\n"
-                comparison_results += "\n"
-        return comparison_results
+    def set_league(self, league):
+        self.league = league
     
-    def plot_stats(self, year, stat_columns, player_names):
-        if year in self.data_dict:
-            bar_width = 0.35
-            fig, ax = plt.subplots()
-
-            for idx, stat in enumerate(stat_columns):
-                stat_values = []
-                for player in player_names:
-                    player_data = self.data_dict[year][self.data_dict[year]['Player'] == player]
-                    if not player_data.empty:
+    def compare_stats(self, stats, players, years=None):
+        comparison_results = ""
+        for year, df in self.data_dict.items():
+            if years and year not in years:
+                continue
+            for player in players:
+                player_data = df[df['Player'] == player]
+                if not player_data.empty:
+                    comparison_results += f"Stats for {player} in {year}:\n"
+                    for stat in stats:
                         stat_value = player_data[stat].values[0]
-                        stat_values.append(stat_value)
+                        comparison_results += f"{stat}: {stat_value}\n"
+                    comparison_results += "\n"
+        return comparison_results
 
-                x_offset = (idx - len(stat_columns)/2)*bar_width
-                ax.bar([i + x_offset for i in range(len(player_names))], stat_values, width=bar_width, align='center', label=stat)
+    def plot_stats(self, stat_columns, player_names, years=None):
+        df_selected = pd.DataFrame()
+        for year, df in self.data_dict.items():
+            if years and year not in years:
+                continue
+            df_year_selected = df[df['Player'].isin(player_names)][['Player'] + stat_columns]
+            df_year_selected['Year'] = year  # add a column for the year
+            df_selected = pd.concat([df_selected, df_year_selected])
+        df_melted = df_selected.melt(id_vars=['Player', 'Year'], var_name='Stat', value_name='Value')
 
-            ax.set_ylabel('Stats Value')
-            ax.set_title('Player Stats Comparison')
-            ax.set_xticks(range(len(player_names)))
-            ax.set_xticklabels(player_names)
-            ax.legend()
-
-            fig.tight_layout()
-            plt.show()
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x='Player', y='Value', hue='Stat', data=df_melted)
+        plt.title('Player Stats Comparison')
+        plt.show()
 
 
 

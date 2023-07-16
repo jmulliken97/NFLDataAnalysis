@@ -8,7 +8,7 @@ The GUI: Built with PyQt5, this provides a user-friendly way to input parameters
 
 The Scraper: Utilizing Requests and BeautifulSoup, the scraper accesses the NFL webpage, locates the appropriate table of stats, and extracts the requested information.
 
-Data Processor: This component is responsible for loading and saving JSON files as well as plotting data.
+Data Processor: This component is responsible for loading and saving JSON files as well as plotting and displaying data.
 
 
 
@@ -17,6 +17,7 @@ pip install PyQt5
 pip install beautifulsoup4
 pip install matplotlib
 pip install pandas
+pip install seaborn
 ```
 
 #Usage
