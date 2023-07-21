@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PyQt5 import QtWidgets
 import json
-import collections
+from collections.abc import MutableMapping
 
 class DataProcessor:
     def __init__(self, text_edit_widget):
@@ -28,6 +28,7 @@ class DataProcessor:
             return "unknown"
 
     def calculate_score(self, player, stats_type):
+        weights = None
         if stats_type == "passing":
             weights = {
                 "Pass Yds": 0.05,
@@ -40,14 +41,11 @@ class DataProcessor:
                 "ANY/A": 0.2,
             }
 
-            # Calculate the touchdown-to-interception ratio
-            if player["INT"] != 0:
+            if player.get("INT") != 0:
                 player["TD:INT Ratio"] = round(player["TD"] / player["INT"], 2)
             else:
-                # If no interceptions,use the number of touchdowns
                 player["TD:INT Ratio"] = round(player["TD"], 2)
 
-            # Calculate the Adjusted Net Yards per Attempt
             player["ANY/A"] = round((player["Pass Yds"] + 20 * player["TD"] - 45 * player["INT"] - player["SckY"]) / (player["Att"] + player["Sck"]), 2)
 
         elif stats_type == "rushing":
@@ -78,9 +76,12 @@ class DataProcessor:
                 "Tgts": 0.05,
             }
 
+        if weights is None:
+            return None
+
         score = 0
         for stat, weight in weights.items():
-            score += player[stat] * weight
+            score += player.get(stat, 0) * weight
 
         return score
 
@@ -88,7 +89,7 @@ class DataProcessor:
         items = []
         for k, v in d.items():
             new_key = parent_key + sep + k if parent_key else k
-            if isinstance(v, collections.MutableMapping):
+            if isinstance(v, MutableMapping):
                 items.extend(self.flatten(v, new_key, sep=sep).items())
             else:
                 items.append((new_key, v))
@@ -108,16 +109,17 @@ class DataProcessor:
     def load_json(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
         if file_name[0]:
-            self.file_name = file_name[0]  # Store the file name to display it later
+            self.file_name = file_name[0] 
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
                 for year, year_data in data.items():
                     for player, stats in year_data.items():
                         stats_type = self.determine_stats_type(stats)
-                        if stats_type != "unknown":
-                            self.calculate_score(stats, stats_type)
+                        if stats_type == "unknown":
+                            continue
+                        self.calculate_score(stats, stats_type)
                     self.data_dict[year] = pd.DataFrame.from_records(list(year_data.values()))
-            # Save the updated data back to the file
+
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)
 
@@ -130,41 +132,55 @@ class DataProcessor:
             player_names.extend(self.data_dict[year]['Player'].unique().tolist())
         return list(set(player_names))
 
-
-    def get_stat_columns(self, year=None):
+    def get_columns(self, year=None):
         if year:
             if year in self.data_dict:
                 return self.data_dict[year].columns.tolist()
             else:
                 return []
         else:
-            all_stat_columns = set()
+            all_columns = set()
             for df in self.data_dict.values():
-                all_stat_columns.update(df.columns.tolist())
-            return list(all_stat_columns)
- 
+                all_columns.update(df.columns.tolist())
+            return list(all_columns)
+
     def sort_dataframe(self, year, sort_by, sort_order): 
-        df = self.data_dict[year]
+        dataframe = self.data_dict[year]
         if sort_order == "Ascending":
-            self.data_dict[year] = df.sort_values(by=sort_by)
+            self.data_dict[year] = dataframe.sort_values(by=sort_by)
         else:
-            self.data_dict[year] = df.sort_values(by=sort_by, ascending=False)  
- 
-    def get_sortable_columns(self, year):
-        if year in self.data_dict:
-            return self.data_dict[year].columns.tolist()
-        return []
-    
+            self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)  
+
     def set_league(self, league):
         self.league = league
+        
+    def correlation_analysis(self, year):
+        if year in self.data_dict:
+            return self.data_dict[year].corr()
+        return None
     
+    def aggregate_stats(self, year, stats):
+        if year in self.data_dict:
+            return self.data_dict[year][stats].mean()
+        return None
+    
+    def calculate_percentiles(self, year, stat):
+        if year in self.data_dict:
+            return self.data_dict[year][stat].quantile([0.25, 0.5, 0.75])
+        return None
+
+    def filter_players(self, year, stat, threshold):
+        if year in self.data_dict:
+            return self.data_dict[year][self.data_dict[year][stat] > threshold]
+        return None
+
     def compare_stats(self, stats, players, years=None):
         comparison_results = ""
-        for year, df in self.data_dict.items():
+        for year, dataframe in self.data_dict.items():
             if years and year not in years:
                 continue
             for player in players:
-                player_data = df[df['Player'] == player]
+                player_data = dataframe[dataframe['Player'] == player]
                 if not player_data.empty:
                     comparison_results += f"Stats for {player} in {year}:\n"
                     for stat in stats:
@@ -175,11 +191,11 @@ class DataProcessor:
 
     def plot_stats(self, stat_columns, player_names, years=None):
         df_selected = pd.DataFrame()
-        for year, df in self.data_dict.items():
+        for year, dataframe in self.data_dict.items():
             if years and year not in years:
                 continue
-            df_year_selected = df[df['Player'].isin(player_names)][['Player'] + stat_columns]
-            df_year_selected['Year'] = year  # add a column for the year
+            df_year_selected = dataframe[dataframe['Player'].isin(player_names)][['Player'] + stat_columns]
+            df_year_selected['Year'] = year  
             df_selected = pd.concat([df_selected, df_year_selected])
         df_melted = df_selected.melt(id_vars=['Player', 'Year'], var_name='Stat', value_name='Value')
 
@@ -187,6 +203,4 @@ class DataProcessor:
         sns.barplot(x='Player', y='Value', hue='Stat', data=df_melted)
         plt.title('Player Stats Comparison')
         plt.show()
-
-
 

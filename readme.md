@@ -20,7 +20,7 @@ pip install pandas
 pip install seaborn
 ```
 
-#Usage
+# Usage
 1. Run the application. You'll see two tabs: "Scraping" and "JSON Viewer".
 
 2. In the "Scraping" tab, enter the URL of the NFL stats page you want to scrape, and the name of the player whose stats you want. You can also select the type of stats you're interested in (passing, rushing, or receiving) from a dropdown menu.

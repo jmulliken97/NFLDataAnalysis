@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMessageBox
-from webscraper import get_player_stats, scrape_all
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from data_processor import DataProcessor
+from webscraper import scrape_all, get_player_stats
 import os
 
 class Ui_MainWindow(object):
@@ -11,12 +11,12 @@ class Ui_MainWindow(object):
         
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
+        MainWindow.resize(1000, 800)
         
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
-        self.tabWidget.setGeometry(QtCore.QRect(0, 0, 800, 600))
+        self.tabWidget.setGeometry(QtCore.QRect(0, 0, 1000, 600))
 
         # Scraping tab
         self.scraping_tab = QtWidgets.QWidget()
@@ -99,11 +99,34 @@ class Ui_MainWindow(object):
         self.pushButton_compare.setGeometry(QtCore.QRect(700, 20, 89, 25))
         self.pushButton_compare.setObjectName("pushButton_compare")
         
+        self.pushButton_correlation = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_correlation.setGeometry(QtCore.QRect(800, 60, 150, 30)) 
+        self.pushButton_correlation.setObjectName("pushButton_correlation")
+        
         self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
         self.comboBox_sort_order.setGeometry(QtCore.QRect(240, 20, 100, 31)) 
         self.comboBox_sort_order.addItems(["Descending", "Ascending"])
         self.comboBox_sort_order.setObjectName("comboBox_sort_order")
- 
+        
+        self.pushButton_aggregate = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_aggregate.setGeometry(QtCore.QRect(800, 100, 150, 30)) 
+        self.pushButton_aggregate.setObjectName("pushButton_aggregate")
+
+        self.pushButton_filter = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_filter.setGeometry(QtCore.QRect(800, 140, 150, 30))
+        self.pushButton_filter.setObjectName("pushButton_filter")
+
+        self.pushButton_percentiles = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_percentiles.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
+        self.pushButton_percentiles.setObjectName("pushButton_percentiles")
+
+        self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 220, 150, 30)) 
+        self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
+
+        self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 260, 150, 30)) 
+        self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "JSON Viewer")
@@ -117,38 +140,48 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
         self.label.setText(_translate("MainWindow", "Enter NFL URL:"))
         self.label_player.setText(_translate("MainWindow", "Enter Player Name:"))
-        self.pushButton.setText(_translate("MainWindow", "Scrape"))
-        self.pushButton_all.setText(_translate("MainWindow", "Scrape All"))
+        self.pushButton.setText(_translate("MainWindow", "Scrape Player Stats"))
+        self.pushButton_all.setText(_translate("MainWindow", "Scrape All Players' Stats"))
         self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
-        self.pushButton_compare.setText(_translate("MainWindow", "Compare"))
-        self.pushButton_legend.setText(_translate("MainWindow", "Legend"))
+        self.pushButton_compare.setText(_translate("MainWindow", "Compare Players"))
+        self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
+        self.pushButton_correlation.setText("Correlation Analysis") 
+        self.pushButton_aggregate.setText("Aggregate Stats") 
+        self.pushButton_filter.setText("Filter Players") 
+        self.pushButton_percentiles.setText("Calculate Percentiles") 
+        self.pushButton_handle_missing.setText("Handle Missing Data") 
+        self.pushButton_detect_outliers.setText("Detect Outliers") 
 
         # Connect button to function
         self.pushButton.clicked.connect(self.scrape_espn)
         self.pushButton_all.clicked.connect(self.scrape_all_data)
         self.pushButton_load.clicked.connect(self.load_json_file)
-        self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_plot.clicked.connect(self.plot_stats)
+        self.pushButton_compare.clicked.connect(self.compare_players)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
-        self.pushButton_compare.clicked.connect(self.compare_stats)
-        self.comboBox_sort_options.currentIndexChanged.connect(self.sort_dataframe)
-        self.pushButton_legend.clicked.connect(self.show_legend)
+        self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
+        self.pushButton_correlation.clicked.connect(self.correlation_analysis)
+        self.pushButton_aggregate.clicked.connect(self.aggregate_stats)
+        self.pushButton_filter.clicked.connect(self.filter_players)
+        self.pushButton_percentiles.clicked.connect(self.calculate_percentiles)
+        self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
+        self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
+        
 
     def scrape_espn(self):
         url = self.lineEdit.text()
         player_name = self.lineEdit_player.text()
         stat_type = self.comboBox.currentText()
-        player_stats = get_player_stats(url, stat_type, player_name)
-        print(player_stats)
+        player_stats = self.data_processor.scrape_player_stats(url, player_name, stat_type)
         self.textEdit_player_stats.setText(str(player_stats))
 
     def scrape_all_data(self):
         url = self.lineEdit.text()
         stat_type = self.comboBox.currentText()
-        scrape_all(url, stat_type)
-        QMessageBox.information(self.centralwidget, "Success", f"{stat_type.capitalize()} data scraped successfully.")
+        self.data_processor.scrape_all_players_stats(url, stat_type)
+        QMessageBox.information(self.centralwidget, "Success", f"All {stat_type.capitalize()} data scraped successfully.")
 
     def load_json_file(self):
         self.data_processor.load_json()
@@ -167,7 +200,13 @@ class Ui_MainWindow(object):
             for j, value in enumerate(row):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
         self.comboBox_sort_column.clear()
-        self.comboBox_sort_options.addItems([col for col in self.data_processor.get_sortable_columns(year) if col != "Player"])  # Exclude the "Player" column
+        self.comboBox_sort_options.addItems([col for col in self.data_processor.data_dict[year].columns if col != "Player"])  # Exclude the "Player" column
+        self.pushButton_correlation.clicked.connect(self.correlation_analysis)
+        self.pushButton_aggregate.clicked.connect(self.aggregate_stats)
+        self.pushButton_filter.clicked.connect(self.filter_players)
+        self.pushButton_percentiles.clicked.connect(self.calculate_percentiles)
+        self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
+        self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
@@ -185,6 +224,7 @@ class Ui_MainWindow(object):
         for i, (index, row) in enumerate(data_df.iterrows()):
             for j, cell in enumerate(row):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
+
                 
     def show_legend(self):
         dialog = QtWidgets.QDialog()
@@ -239,81 +279,94 @@ class Ui_MainWindow(object):
         text_edit.append("<b>Rec YAC/R:</b> Average yards after catch per reception")
         text_edit.append("<b>Tgts:</b> Number of times targeted by the quarterback")
 
-    
-
         dialog.exec_()
         
-    def compare_stats(self):
-        years = self.comboBox_year.currentText().split(",")  
-        stats = self.comboBox_sort_options.currentText().split(",") 
-        players = self.lineEdit_player.text().split(",")  
-        comparison_results = self.data_processor.compare_stats(stats, players, years)
-        self.textEdit_player_stats.setText(comparison_results)
+    def correlation_analysis(self):
+        year = self.comboBox_year.currentText()
+        correlation_matrix = self.data_processor.correlation_analysis(year)
+        self.textEdit_player_stats.setText(str(correlation_matrix))
 
+    def aggregate_stats(self):
+        year = self.comboBox_year.currentText()
+        stats = self.comboBox_stat.currentText()
+        aggregated_stats = self.data_processor.aggregate_stats(year, stats)
+        self.textEdit_player_stats.setText(str(aggregated_stats))
+
+    def filter_players(self):
+        year = self.comboBox_year.currentText()
+        stat = self.comboBox_stat.currentText()
+        threshold = float(self.lineEdit_threshold.text())
+        filtered_players = self.data_processor.filter_players(year, stat, threshold)
+        self.textEdit_player_stats.setText(str(filtered_players))
+
+    def calculate_percentiles(self):
+        year = self.comboBox_year.currentText()
+        stat = self.comboBox_stat.currentText()
+        percentiles = self.data_processor.calculate_percentiles(year, stat)
+        self.textEdit_player_stats.setText(str(percentiles))
+
+    def handle_missing_data(self):
+        year = self.comboBox_year.currentText()
+        self.data_processor.handle_missing_data(year)
+        self.textEdit_player_stats.setText("Missing data has been handled.")
+
+    def detect_outliers(self):
+        year = self.comboBox_year.currentText()
+        stat = self.comboBox_stat.currentText()
+        outliers = self.data_processor.detect_outliers(year, stat)
+        self.textEdit_player_stats.setText(str(outliers))
+        
+    def compare_players(self):
+        years = self.comboBox_year.currentText().split(",")  
+        players = self.lineEdit_player.text().split(",")
+        stats = []  
+        
         while True:
-            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
+            player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_all_players(), editable=False)
             if ok1:
                 players.append(player)
-                add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another player?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-                if add_another == QtWidgets.QMessageBox.No:
-                    break
-            else:
-                break
-
-        player_scores = {}
-        for year in years:
-            for player in players:
-                player_data = self.data_processor.data_dict[year][self.data_processor.data_dict[year]['Player'] == player]
-                if not player_data.empty:
-                    player_data_dict = player_data.to_dict(orient='records')[0]
-                    stats_type = self.data_processor.determine_stats_type(player_data_dict)
-                    if stats_type != "unknown":
-                        player_scores[player] = self.data_processor.calculate_score(player_data_dict, stats_type)
-
-        sorted_players = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
-
-        dialog = QtWidgets.QDialog()
-        dialog.setWindowTitle("Player Comparison")
-        dialog.resize(400, 300)
-
-        text_edit = QtWidgets.QTextEdit(dialog)
-        text_edit.setGeometry(10, 10, 380, 280)
-        text_edit.setReadOnly(True)
-
-        for player, score in sorted_players:
-            text_edit.append(f"<b>{player}</b>: {score}")
-
-        dialog.exec_()
-
-    def plot_stats(self):
-        leagues = self.comboBox_league.currentText().split(",")  # Assuming leagues are separated by commas
-        years = self.comboBox_year.currentText().split(",")  
-        players = []
-        stats = []
-
-        while True:
-            player, ok1 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
-            if ok1:
-                players.append(player)
-                add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another player?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-                if add_another == QtWidgets.QMessageBox.No:
+                add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if add_another == QMessageBox.No:
                     break
             else:
                 break
 
         while True:
-            stat, ok2 = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_stat_columns(), editable=False)
+            stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_all_stats(), editable=False)
             if ok2:
                 stats.append(stat)
-                add_another = QtWidgets.QMessageBox.question(None, 'Question', 'Would you like to add another stat?', QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-                if add_another == QtWidgets.QMessageBox.No:
+                add_another = QMessageBox.question(None, 'Question', 'Would you like to add another stat?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if add_another == QMessageBox.No:
                     break
             else:
                 break
 
-        for league in leagues:
-            self.data_processor.set_league(league)  # Set the league in the DataProcessor
-            self.data_processor.plot_stats(stats, players, years)
+        comparison_results = self.data_processor.compare_players(stats, players, years)
+        self.textEdit_player_stats.setText(comparison_results)
 
+    def plot_stats(self):
+        years = self.comboBox_year.currentText().split(",")  
+        players = self.lineEdit_player.text().split(",")  
+        stats = self.comboBox_sort_options.currentText().split(",") 
 
- 
+        while True:
+            player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_all_players(), editable=False)
+            if ok1:
+                players.append(player)
+                add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if add_another == QMessageBox.No:
+                    break
+            else:
+                break
+
+        while True:
+            stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_all_stats(), editable=False)
+            if ok2:
+                stats.append(stat)
+                add_another = QMessageBox.question(None, 'Question', 'Would you like to add another stat?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if add_another == QMessageBox.No:
+                    break
+            else:
+                break
+
+        self.data_processor.plot_stats(stats, players, years)
