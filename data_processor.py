@@ -4,6 +4,7 @@ import seaborn as sns
 from PyQt5 import QtWidgets
 import json
 from collections.abc import MutableMapping
+import numpy as np
 
 class DataProcessor:
     def __init__(self, text_edit_widget):
@@ -12,9 +13,9 @@ class DataProcessor:
         self.league = None
         
     def determine_stats_type(self, stats):
-        passing_headers = ['Player', 'Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY']
-        rushing_headers = ['Player', 'Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM']
-        receiving_headers = ['Player', 'Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
+        passing_headers = ['Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY']
+        rushing_headers = ['Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM']
+        receiving_headers = ['Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
 
         stats_keys = stats.keys()
 
@@ -27,7 +28,10 @@ class DataProcessor:
         else:
             return "unknown"
 
-    def calculate_score(self, player, stats_type):
+
+    def calculate_score(self, player_data):
+        player = player_data.copy()
+        stats_type = self.determine_stats_type(player_data)
         weights = None
         if stats_type == "passing":
             weights = {
@@ -109,27 +113,30 @@ class DataProcessor:
     def load_json(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
         if file_name[0]:
-            self.file_name = file_name[0] 
+            self.file_name = file_name[0]
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
                 for year, year_data in data.items():
                     for player, stats in year_data.items():
-                        stats_type = self.determine_stats_type(stats)
-                        if stats_type == "unknown":
-                            continue
-                        self.calculate_score(stats, stats_type)
+                        stats['Score'] = self.calculate_score(stats)
                     self.data_dict[year] = pd.DataFrame.from_records(list(year_data.values()))
 
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)
+                
+            columns = self.get_columns()
 
     def get_file_name(self):
         return self.file_name if hasattr(self, 'file_name') else 'No file loaded.'
     
-    def get_player_names(self):
+    def get_player_names(self, year=None):
         player_names = []
-        for year in self.data_dict:
-            player_names.extend(self.data_dict[year]['Player'].unique().tolist())
+        if year is not None:
+            if year in self.data_dict:
+                player_names = self.data_dict[year]['Player'].unique().tolist()
+        else:
+            for year in self.data_dict:
+                player_names.extend(self.data_dict[year]['Player'].unique().tolist())
         return list(set(player_names))
 
     def get_columns(self, year=None):
@@ -144,35 +151,49 @@ class DataProcessor:
                 all_columns.update(df.columns.tolist())
             return list(all_columns)
 
-    def sort_dataframe(self, year, sort_by, sort_order): 
+    def sort_dataframe(self, year, sort_by, sort_order):
         dataframe = self.data_dict[year]
+        if not sort_by:
+            return
         if sort_order == "Ascending":
             self.data_dict[year] = dataframe.sort_values(by=sort_by)
         else:
-            self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)  
-
-    def set_league(self, league):
-        self.league = league
-        
+            self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)
+  
     def correlation_analysis(self, year):
         if year in self.data_dict:
-            return self.data_dict[year].corr()
+            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
+            return numeric_df.corr()
         return None
-    
+
     def aggregate_stats(self, year, stats):
         if year in self.data_dict:
-            return self.data_dict[year][stats].mean()
+            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
+            return numeric_df[stats].mean()
         return None
-    
+
     def calculate_percentiles(self, year, stat):
         if year in self.data_dict:
-            return self.data_dict[year][stat].quantile([0.25, 0.5, 0.75])
+            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
+            return numeric_df[stat].quantile([0.25, 0.5, 0.75])
         return None
 
     def filter_players(self, year, stat, threshold):
         if year in self.data_dict:
-            return self.data_dict[year][self.data_dict[year][stat] > threshold]
+            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
+            return numeric_df[numeric_df[stat] > threshold]
         return None
+
+    def compare_scores(self, players):
+        comparison_results = ""
+        for year, player in players:
+            dataframe = self.data_dict[year]
+            player_data = dataframe[dataframe['Player'] == player]
+            if not player_data.empty:
+                player_score = self.calculate_score(player_data.iloc[0])
+                comparison_results += f"Score for {player} in {year}: {player_score}\n"
+        return comparison_results
+
 
     def compare_stats(self, stats, players, years=None):
         comparison_results = ""
@@ -181,6 +202,7 @@ class DataProcessor:
                 continue
             for player in players:
                 player_data = dataframe[dataframe['Player'] == player]
+                print(f"Data for player {player} in {year}: {player_data}")
                 if not player_data.empty:
                     comparison_results += f"Stats for {player} in {year}:\n"
                     for stat in stats:
