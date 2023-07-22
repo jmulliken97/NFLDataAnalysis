@@ -160,7 +160,7 @@ class Ui_MainWindow(object):
         self.pushButton_all.clicked.connect(self.scrape_all)
         self.pushButton_load.clicked.connect(self.load_json_file)
         self.pushButton_plot.clicked.connect(self.plot_stats)
-        self.pushButton_compare.clicked.connect(self.compare_stats)
+        # self.pushButton_compare.clicked.connect(self.compare_stats)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
         self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
