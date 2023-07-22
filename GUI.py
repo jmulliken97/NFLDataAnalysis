@@ -211,7 +211,8 @@ class Ui_MainWindow(object):
             for j, value in enumerate(row):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
         self.comboBox_sort_column.clear()
-        self.comboBox_sort_column.addItems(self.data_processor.get_columns(year))
+        self.comboBox_sort_options.addItems(self.data_processor.get_columns())
+
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
