@@ -166,35 +166,18 @@ class DataProcessor:
             return numeric_df.corr()
         return None
 
-    def aggregate_stats(self, year, stats):
-        if year in self.data_dict:
-            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
-            return numeric_df[stats].mean()
-        return None
+    def descriptive_stats(self, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())  
+        elif year in self.data_dict:  
+            combined_df = self.data_dict[year]
+        else:
+            return None
 
-    def calculate_percentiles(self, year, stat):
-        if year in self.data_dict:
-            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
-            return numeric_df[stat].quantile([0.25, 0.5, 0.75])
-        return None
+        numeric_df = combined_df.select_dtypes(include=[np.number])
 
-    def filter_players(self, year, stat, threshold):
-        if year in self.data_dict:
-            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
-            return numeric_df[numeric_df[stat] > threshold]
-        return None
-
-    def compare_scores(self, players):
-        comparison_results = ""
-        for year, player in players:
-            dataframe = self.data_dict[year]
-            player_data = dataframe[dataframe['Player'] == player]
-            if not player_data.empty:
-                player_score = self.calculate_score(player_data.iloc[0])
-                comparison_results += f"Score for {player} in {year}: {player_score}\n"
-        return comparison_results
-
-
+        return numeric_df.describe()
+    
     def compare_stats(self, stats, players, years=None):
         comparison_results = ""
         for year, dataframe in self.data_dict.items():

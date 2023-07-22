@@ -1,10 +1,10 @@
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem
 from data_processor import DataProcessor
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
-from webscraper import scrape_all, get_player_stats
+import webscraper
 import os
 
 class Ui_MainWindow(object):
@@ -113,24 +113,16 @@ class Ui_MainWindow(object):
         self.comboBox_sort_order.addItems(["Descending", "Ascending"])
         self.comboBox_sort_order.setObjectName("comboBox_sort_order")
         
-        self.pushButton_aggregate = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_aggregate.setGeometry(QtCore.QRect(800, 100, 150, 30)) 
-        self.pushButton_aggregate.setObjectName("pushButton_aggregate")
-
-        self.pushButton_filter = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_filter.setGeometry(QtCore.QRect(800, 140, 150, 30))
-        self.pushButton_filter.setObjectName("pushButton_filter")
-
-        self.pushButton_percentiles = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_percentiles.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
-        self.pushButton_percentiles.setObjectName("pushButton_percentiles")
+        self.pushButton_display_stats = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_display_stats.setGeometry(QtCore.QRect(800, 100, 150, 30)) 
+        self.pushButton_display_stats.setObjectName("pushButton_display_stats")
 
         self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 220, 150, 30)) 
+        self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 140, 150, 30)) 
         self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
 
         self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 260, 150, 30)) 
+        self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
         self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
         self.textEdit_comparison = QtWidgets.QTextEdit(self.json_tab)
@@ -152,16 +144,14 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
         self.label.setText(_translate("MainWindow", "Enter NFL URL:"))
         self.label_player.setText(_translate("MainWindow", "Enter Player Name:"))
-        self.pushButton.setText(_translate("MainWindow", "Scrape Player Stats"))
-        self.pushButton_all.setText(_translate("MainWindow", "Scrape All Players' Stats"))
+        self.pushButton.setText(_translate("MainWindow", "Scrape Player"))
+        self.pushButton_all.setText(_translate("MainWindow", "Scrape URL"))
         self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
         self.pushButton_compare.setText(_translate("MainWindow", "Compare Players"))
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
-        self.pushButton_aggregate.setText(_translate("MainWindow", "Aggregate Stats")) 
-        self.pushButton_filter.setText(_translate("MainWindow", "Filter Players")) 
-        self.pushButton_percentiles.setText(_translate("MainWindow", "Calculate Percentiles")) 
+        self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
         self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
         self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
 
@@ -175,9 +165,7 @@ class Ui_MainWindow(object):
         self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
-        self.pushButton_aggregate.clicked.connect(self.aggregate_stats)
-        self.pushButton_filter.clicked.connect(self.filter_players)
-        self.pushButton_percentiles.clicked.connect(self.calculate_percentiles)
+        self.pushButton_display_stats.clicked.connect(self.display_stats)
         self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
@@ -186,13 +174,13 @@ class Ui_MainWindow(object):
         url = self.lineEdit.text()
         player_name = self.lineEdit_player.text()
         stat_type = self.comboBox.currentText()
-        player_stats = self.data_processor.get_player_stats(url, player_name, stat_type)
+        player_stats = webscraper.get_player_stats(url, player_name, stat_type)
         self.textEdit_player_stats.setText(str(player_stats))
 
     def scrape_all(self):
         url = self.lineEdit.text()
         stat_type = self.comboBox.currentText()
-        self.data_processor.scrape_all(url, stat_type)
+        webscraper.scrape_all(url, stat_type)
         QMessageBox.information(self.centralwidget, "Success", f"All {stat_type.capitalize()} data scraped successfully.")
 
     def load_json_file(self):
@@ -317,30 +305,31 @@ class Ui_MainWindow(object):
         else:
             self.textEdit.setText("No year selected.")
 
-    def aggregate_stats(self):
-        year = self.comboBox_year.currentText()
-        stats = self.comboBox_stats.currentText()
-        aggregated_stats = self.data_processor.aggregate_stats(year, stats)
-        if aggregated_stats is not None:
-            self.textEdit.setText(f"Mean of {stats} for {year}: {aggregated_stats}")
-        else:
-            self.textEdit.setText("No data available for the selected year and stats.")
-
-    def filter_players(self):
-        year = self.comboBox_year.currentText()
-        stat = self.comboBox_stat.currentText()
-        threshold = float(self.lineEdit_threshold.text())
-        filtered_players = self.data_processor.filter_players(year, stat, threshold)
-        self.textEdit_player_stats.setText(str(filtered_players))
-
-    def calculate_percentiles(self):
-        year = self.comboBox_year.currentText()
-        stat = self.comboBox_stats.currentText()
-        percentiles = self.data_processor.calculate_percentiles(year, stat)
-        if percentiles is not None:
-            self.textEdit.setText(f"Percentiles for {stat} for {year}:\n" + percentiles.to_string())
-        else:
-            self.textEdit.setText("No data available for the selected year and stat.")
+    def display_stats(self):
+        years = list(self.data_processor.data_dict.keys())
+        years.append('All')
+        year, ok = QInputDialog.getItem(None, "Input", "Select a year:", years, editable=False)
+        if ok:
+            year = None if year == 'All' else year
+            stats = self.data_processor.descriptive_stats(year)
+            if stats is not None:
+                dialog = QDialog()
+                dialog.setWindowTitle("Descriptive Statistics")
+                table = QTableWidget()
+                table.setRowCount(len(stats))
+                table.setColumnCount(len(stats.columns))
+                stats = stats.round(2)
+                table.setHorizontalHeaderLabels(stats.columns)
+                table.setVerticalHeaderLabels(stats.index.str.capitalize())
+                for i in range(len(stats)):
+                    for j in range(len(stats.columns)):
+                        table.setItem(i, j, QTableWidgetItem(str(stats.iat[i, j])))
+                layout = QVBoxLayout()
+                layout.addWidget(table)
+                dialog.setLayout(layout)
+                dialog.exec_()
+            else:
+                self.textEdit.setText("No data available for the selected year.")
 
     def handle_missing_data(self):
         year = self.comboBox_year.currentText()
