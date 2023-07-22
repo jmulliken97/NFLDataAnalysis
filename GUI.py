@@ -100,9 +100,9 @@ class Ui_MainWindow(object):
         self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
         self.label_filename.setText("No file loaded.")
         
-        self.pushButton_compare = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_compare.setGeometry(QtCore.QRect(700, 20, 89, 25))
-        self.pushButton_compare.setObjectName("pushButton_compare")
+        # self.pushButton_compare = QtWidgets.QPushButton(self.json_tab)
+        # self.pushButton_compare.setGeometry(QtCore.QRect(700, 20, 89, 25))
+        # self.pushButton_compare.setObjectName("pushButton_compare")
         
         self.pushButton_correlation = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_correlation.setGeometry(QtCore.QRect(800, 60, 150, 30)) 
@@ -117,13 +117,13 @@ class Ui_MainWindow(object):
         self.pushButton_display_stats.setGeometry(QtCore.QRect(800, 100, 150, 30)) 
         self.pushButton_display_stats.setObjectName("pushButton_display_stats")
 
-        self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 140, 150, 30)) 
-        self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
+        # self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
+        # self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 140, 150, 30)) 
+        # self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
 
-        self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
-        self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
+        # self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
+        # self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
+        # self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
         self.textEdit_comparison = QtWidgets.QTextEdit(self.json_tab)
         self.textEdit_comparison.setGeometry(QtCore.QRect(40, 560, 711, 180))  
@@ -148,12 +148,12 @@ class Ui_MainWindow(object):
         self.pushButton_all.setText(_translate("MainWindow", "Scrape URL"))
         self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
-        self.pushButton_compare.setText(_translate("MainWindow", "Compare Players"))
+        # self.pushButton_compare.setText(_translate("MainWindow", "Compare Players"))
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
         self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
-        self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
-        self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
+        # self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
+        # self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
 
         # Connect button to function
         self.pushButton.clicked.connect(self.get_player_stats)
@@ -166,8 +166,8 @@ class Ui_MainWindow(object):
         self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
         self.pushButton_display_stats.clicked.connect(self.display_stats)
-        self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
-        self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
+        # self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
+        # self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
 
     def get_player_stats(self):
@@ -331,61 +331,44 @@ class Ui_MainWindow(object):
             else:
                 self.textEdit.setText("No data available for the selected year.")
 
-    def handle_missing_data(self):
-        year = self.comboBox_year.currentText()
-        self.data_processor.handle_missing_data(year)
-        self.textEdit.setText("Missing data has been handled.")
+    # def handle_missing_data(self):
+    #     year = self.comboBox_year.currentText()
+    #     self.data_processor.handle_missing_data(year)
+    #     self.textEdit.setText("Missing data has been handled.")
 
-    def detect_outliers(self):
-        year = self.comboBox_year.currentText()
-        stat = self.comboBox_stats.currentText()
-        outliers = self.data_processor.detect_outliers(year, stat)
-        if outliers is not None and not outliers.empty:
-            self.textEdit.setText(outliers.to_string(index=False))
-        else:
-            self.textEdit.setText("No outliers detected for the selected year and stat.")
+    # def detect_outliers(self):
+    #     year = self.comboBox_year.currentText()
+    #     stat = self.comboBox_stats.currentText()
+    #     outliers = self.data_processor.detect_outliers(year, stat)
+    #     if outliers is not None and not outliers.empty:
+    #         self.textEdit.setText(outliers.to_string(index=False))
+    #     else:
+    #         self.textEdit.setText("No outliers detected for the selected year and stat.")
   
-    def compare_stats(self):
-        players = []
-        while True:
-            year, ok0 = QInputDialog.getItem(None, "Input", "Select a year:", list(self.data_processor.data_dict.keys()), editable=False)
-            if ok0:
-                player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
-                if ok1:
-                    players.append((year, player))
-                    add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                    if add_another == QMessageBox.No:
-                        break
-                else:
-                    break
-        stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
-        if ok2:
-            comparison_results = self.data_processor.compare_stats([stat], players)
-            self.textEdit_comparison.setText(comparison_results) 
+    # def compare_stats(self):
+    #     players = []
+    #     while True:
+    #         year, ok0 = QInputDialog.getItem(None, "Input", "Select a year:", list(self.data_processor.data_dict.keys()), editable=False)
+    #         if ok0:
+    #             player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
+    #             if ok1:
+    #                 players.append((year, player))
+    #                 add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    #                 if add_another == QMessageBox.No:
+    #                     break
+    #             else:
+    #                 break
+    #     stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
+    #     if ok2:
+    #         comparison_results = self.data_processor.compare_stats([stat], players)
+    #         self.textEdit_comparison.setText(comparison_results) 
 
     def plot_stats(self):
-        players = []
-        stats = []
-        while True:
-            year, ok0 = QInputDialog.getItem(None, "Input", "Select a year:", list(self.data_processor.data_dict.keys()), editable=False)
-            if ok0:
-                player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
-                if ok1:
-                    players.append((year, player))
-                    add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                    if add_another == QMessageBox.No:
-                        break
-                else:
-                    break
+        player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)
+        if not ok1:
+            return
+        stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
+        if not ok2:
+            return
+        self.data_processor.plot_player_stat(player, stat)
 
-        while True:
-            stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
-            if ok2:
-                stats.append(stat)
-                add_another = QMessageBox.question(None, 'Question', 'Would you like to add another stat?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if add_another == QMessageBox.No:
-                    break
-
-        years = [player[0] for player in players] 
-        players = [player[1] for player in players]  
-        self.data_processor.plot_stats(stats, players, years)

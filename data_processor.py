@@ -173,9 +173,7 @@ class DataProcessor:
             combined_df = self.data_dict[year]
         else:
             return None
-
         numeric_df = combined_df.select_dtypes(include=[np.number])
-
         return numeric_df.describe()
     
     def compare_stats(self, stats, players, years=None):
@@ -194,18 +192,15 @@ class DataProcessor:
                     comparison_results += "\n"
         return comparison_results
 
-    def plot_stats(self, stat_columns, player_names, years=None):
+    def plot_player_stat(self, player_name, stat_column):
         df_selected = pd.DataFrame()
         for year, dataframe in self.data_dict.items():
-            if years and year not in years:
-                continue
-            df_year_selected = dataframe[dataframe['Player'].isin(player_names)][['Player'] + stat_columns]
+            df_year_selected = dataframe[dataframe['Player'] == player_name][['Player', stat_column]]
             df_year_selected['Year'] = year  
             df_selected = pd.concat([df_selected, df_year_selected])
-        df_melted = df_selected.melt(id_vars=['Player', 'Year'], var_name='Stat', value_name='Value')
-
         plt.figure(figsize=(10, 6))
-        sns.barplot(x='Player', y='Value', hue='Stat', data=df_melted)
-        plt.title('Player Stats Comparison')
+        sns.barplot(x='Year', y=stat_column, data=df_selected)
+        plt.title(f'{player_name} {stat_column} Over Years')
         plt.show()
+
 
