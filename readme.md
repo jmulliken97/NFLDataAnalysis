@@ -4,11 +4,11 @@ NFL Stats Scraper is a Python-based project that allows you to scrape player sta
 # Project Structure 
 This project is made up of three main components:
 
-The GUI: Built with PyQt5, this provides a user-friendly way to input parameters (such as the URL of the stats page, the player's name, and the type of stats to scrape), trigger the scraping process, and view the results.
+The GUI: Built with PyQt5, this provides a user-friendly way to input parameters (such as the URL of the stats page and the type of stats to scrape), trigger the scraping process, and view the analyze.
 
 The Scraper: Utilizing Requests and BeautifulSoup, the scraper accesses the NFL webpage, locates the appropriate table of stats, and extracts the requested information.
 
-Data Processor: This component is responsible for loading and saving JSON files as well as plotting and displaying data.
+Data Processor: This component is responsible for loading and saving JSON files as well as data wrangling and visualization.
 
 
 
