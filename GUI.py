@@ -21,7 +21,7 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
-        self.tabWidget.setGeometry(QtCore.QRect(0, 0, 1000, 600))
+        self.tabWidget.setGeometry(QtCore.QRect(0, 0, 1000, 780))
 
         # Scraping tab
         self.scraping_tab = QtWidgets.QWidget()
@@ -33,32 +33,20 @@ class Ui_MainWindow(object):
         self.label.setObjectName("label")
         
         self.lineEdit = QtWidgets.QLineEdit(self.scraping_tab)
-        self.lineEdit.setGeometry(QtCore.QRect(190, 40, 551, 31))
+        self.lineEdit.setGeometry(QtCore.QRect(190, 40, 650, 31))
         self.lineEdit.setObjectName("lineEdit")
-        
-        self.textEdit_player_stats = QtWidgets.QTextEdit(self.scraping_tab)
-        self.textEdit_player_stats.setGeometry(QtCore.QRect(40, 230, 711, 300))
-        self.textEdit_player_stats.setObjectName("textEdit_player_stats")
         
         self.label_player = QtWidgets.QLabel(self.scraping_tab)
         self.label_player.setGeometry(QtCore.QRect(40, 90, 141, 31))
         self.label_player.setObjectName("label_player")
-        
-        self.lineEdit_player = QtWidgets.QLineEdit(self.scraping_tab)
-        self.lineEdit_player.setGeometry(QtCore.QRect(190, 90, 551, 31))
-        self.lineEdit_player.setObjectName("lineEdit_player")
 
         self.comboBox = QtWidgets.QComboBox(self.scraping_tab)
-        self.comboBox.setGeometry(QtCore.QRect(190, 140, 551, 31))
+        self.comboBox.setGeometry(QtCore.QRect(190, 80, 650, 31))
         self.comboBox.addItems(["passing", "rushing", "receiving"])
         self.comboBox.setObjectName("comboBox")
 
-        self.pushButton = QtWidgets.QPushButton(self.scraping_tab)
-        self.pushButton.setGeometry(QtCore.QRect(250, 190, 89, 25))
-        self.pushButton.setObjectName("pushButton")
-
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
-        self.pushButton_all.setGeometry(QtCore.QRect(450, 190, 89, 25))
+        self.pushButton_all.setGeometry(QtCore.QRect(450, 140, 89, 25))
         self.pushButton_all.setObjectName("pushButton_all")
 
         # add scraping tab to the tab widget
@@ -73,7 +61,7 @@ class Ui_MainWindow(object):
         self.comboBox_sort_column.setObjectName("comboBox_sort_column")
         
         self.tableWidget = QtWidgets.QTableWidget(self.json_tab)
-        self.tableWidget.setGeometry(QtCore.QRect(40, 60, 711, 491))
+        self.tableWidget.setGeometry(QtCore.QRect(40, 60, 711, 700))
 
         # add widgets to the json tab
         self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
@@ -100,9 +88,9 @@ class Ui_MainWindow(object):
         self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
         self.label_filename.setText("No file loaded.")
         
-        # self.pushButton_compare = QtWidgets.QPushButton(self.json_tab)
-        # self.pushButton_compare.setGeometry(QtCore.QRect(700, 20, 89, 25))
-        # self.pushButton_compare.setObjectName("pushButton_compare")
+        self.pushButton_distro = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_distro.setGeometry(QtCore.QRect(700, 20, 89, 25))
+        self.pushButton_distro.setObjectName("pushButton_distro")
         
         self.pushButton_correlation = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_correlation.setGeometry(QtCore.QRect(800, 60, 150, 30)) 
@@ -125,13 +113,6 @@ class Ui_MainWindow(object):
         # self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
         # self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
-        self.textEdit_comparison = QtWidgets.QTextEdit(self.json_tab)
-        self.textEdit_comparison.setGeometry(QtCore.QRect(40, 560, 711, 180))  
-        self.textEdit_comparison.setReadOnly(True) 
-
-        self.canvas.setParent(self.json_tab)
-        self.canvas.setGeometry(800, 300, 400, 300)
-
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "JSON Viewer")
         
@@ -143,12 +124,10 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
         self.label.setText(_translate("MainWindow", "Enter NFL URL:"))
-        self.label_player.setText(_translate("MainWindow", "Enter Player Name:"))
-        self.pushButton.setText(_translate("MainWindow", "Scrape Player"))
         self.pushButton_all.setText(_translate("MainWindow", "Scrape URL"))
         self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
-        # self.pushButton_compare.setText(_translate("MainWindow", "Compare Players"))
+        self.pushButton_distro.setText(_translate("MainWindow", "Distribution"))
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
         self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
@@ -156,11 +135,10 @@ class Ui_MainWindow(object):
         # self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
 
         # Connect button to function
-        self.pushButton.clicked.connect(self.get_player_stats)
         self.pushButton_all.clicked.connect(self.scrape_all)
         self.pushButton_load.clicked.connect(self.load_json_file)
         self.pushButton_plot.clicked.connect(self.plot_stats)
-        # self.pushButton_compare.clicked.connect(self.compare_stats)
+        self.pushButton_distro.clicked.connect(self.distribution)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
         self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
         self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
@@ -170,17 +148,18 @@ class Ui_MainWindow(object):
         # self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
 
-    def get_player_stats(self):
-        url = self.lineEdit.text()
-        player_name = self.lineEdit_player.text()
-        stat_type = self.comboBox.currentText()
-        player_stats = webscraper.get_player_stats(url, player_name, stat_type)
-        self.textEdit_player_stats.setText(str(player_stats))
-
     def scrape_all(self):
         url = self.lineEdit.text()
         stat_type = self.comboBox.currentText()
-        webscraper.scrape_all(url, stat_type)
+        if stat_type == 'passing':
+            max_players = 35
+        elif stat_type == 'rushing':
+            max_players = 50
+        elif stat_type == 'receiving':
+            max_players = 100
+        else:
+            raise ValueError(f"Unknown stat type: {stat_type}")
+        webscraper.scrape_all(url, stat_type, max_players)
         QMessageBox.information(self.centralwidget, "Success", f"All {stat_type.capitalize()} data scraped successfully.")
 
     def load_json_file(self):
@@ -211,13 +190,16 @@ class Ui_MainWindow(object):
         
     def update_table(self):
         year = self.comboBox_year.currentText()
-        data_df = self.data_processor.data_dict[year]
-        self.tableWidget.setRowCount(len(data_df))
-        self.tableWidget.setColumnCount(len(data_df.columns))
-        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-        for i, (index, row) in enumerate(data_df.iterrows()):
-            for j, cell in enumerate(row):
-                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
+        if year in self.data_processor.data_dict:
+            data_df = self.data_processor.data_dict[year]
+            self.tableWidget.setRowCount(len(data_df))
+            self.tableWidget.setColumnCount(len(data_df.columns))
+            self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
+            for i, (index, row) in enumerate(data_df.iterrows()):
+                for j, cell in enumerate(row):
+                    self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
+        else:
+            print(f"No data for year {year}")
          
     def show_legend(self):
         dialog = QtWidgets.QDialog()
@@ -275,8 +257,11 @@ class Ui_MainWindow(object):
         dialog.exec_()
         
     def correlation_analysis(self):
-        year, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a year:", list(self.data_processor.data_dict.keys()), editable=False)
+        years = list(self.data_processor.data_dict.keys())
+        years.append('All')
+        year, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a year:", years, editable=False)
         if ok:
+            year = None if year == 'All' else year
             correlation_matrix = self.data_processor.correlation_analysis(year)
             if correlation_matrix is not None:
                
@@ -345,23 +330,31 @@ class Ui_MainWindow(object):
     #     else:
     #         self.textEdit.setText("No outliers detected for the selected year and stat.")
   
-    # def compare_stats(self):
-    #     players = []
-    #     while True:
-    #         year, ok0 = QInputDialog.getItem(None, "Input", "Select a year:", list(self.data_processor.data_dict.keys()), editable=False)
-    #         if ok0:
-    #             player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(year), editable=False)
-    #             if ok1:
-    #                 players.append((year, player))
-    #                 add_another = QMessageBox.question(None, 'Question', 'Would you like to add another player?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-    #                 if add_another == QMessageBox.No:
-    #                     break
-    #             else:
-    #                 break
-    #     stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
-    #     if ok2:
-    #         comparison_results = self.data_processor.compare_stats([stat], players)
-    #         self.textEdit_comparison.setText(comparison_results) 
+    def distribution(self):
+        stat, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
+        if not ok:
+            return
+        years = list(self.data_processor.data_dict.keys())
+        years.append('All')
+        year, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a year:", years, editable=False)
+        if not ok:
+            return
+        year = None if year == 'All' else year
+        data = self.data_processor.distribution(stat, year)
+        plot_window = QtWidgets.QDialog()
+        plot_window.setWindowTitle(f"Distribution of {stat} in {'all years' if year is None else year}")
+        fig = Figure(figsize=(5, 4), dpi=100)
+        ax = fig.add_subplot(111)
+        canvas = FigureCanvas(fig)
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(canvas)
+        plot_window.setLayout(layout)
+        ax.hist(data, bins='auto', alpha=0.7, rwidth=0.85, color='blue', edgecolor='black')
+        ax.set_title(f'Distribution of {stat} in {"all years" if year is None else year}')
+        ax.set_xlabel(stat)
+        ax.set_ylabel('Frequency')
+
+        plot_window.exec_()
 
     def plot_stats(self):
         player, ok1 = QInputDialog.getItem(None, "Input", "Select a player:", self.data_processor.get_player_names(), editable=False)

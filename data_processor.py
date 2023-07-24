@@ -89,16 +89,6 @@ class DataProcessor:
 
         return score
 
-    def flatten(self, d, parent_key='', sep='_'):
-        items = []
-        for k, v in d.items():
-            new_key = parent_key + sep + k if parent_key else k
-            if isinstance(v, MutableMapping):
-                items.extend(self.flatten(v, new_key, sep=sep).items())
-            else:
-                items.append((new_key, v))
-        return dict(items)
-
     def flatten_json(self, data):
         flattened_data = []
         for year, players in data.items():
@@ -160,11 +150,15 @@ class DataProcessor:
         else:
             self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)
   
-    def correlation_analysis(self, year):
-        if year in self.data_dict:
-            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
-            return numeric_df.corr()
-        return None
+    def correlation_analysis(self, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:  
+            combined_df = self.data_dict[year]
+        else: 
+            return None
+        numeric_df = combined_df.select_dtypes(include=[np.number])
+        return numeric_df.corr()
 
     def descriptive_stats(self, year=None):
         if year is None: 
@@ -176,21 +170,15 @@ class DataProcessor:
         numeric_df = combined_df.select_dtypes(include=[np.number])
         return numeric_df.describe()
     
-    def compare_stats(self, stats, players, years=None):
-        comparison_results = ""
-        for year, dataframe in self.data_dict.items():
-            if years and year not in years:
-                continue
-            for player in players:
-                player_data = dataframe[dataframe['Player'] == player]
-                print(f"Data for player {player} in {year}: {player_data}")
-                if not player_data.empty:
-                    comparison_results += f"Stats for {player} in {year}:\n"
-                    for stat in stats:
-                        stat_value = player_data[stat].values[0]
-                        comparison_results += f"{stat}: {stat_value}\n"
-                    comparison_results += "\n"
-        return comparison_results
+    def distribution(self, stat, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:
+            combined_df = self.data_dict[year]
+        else:
+            return None
+        stat_data = combined_df[stat]
+        return stat_data
 
     def plot_player_stat(self, player_name, stat_column):
         df_selected = pd.DataFrame()
