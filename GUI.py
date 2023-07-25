@@ -32,21 +32,40 @@ class Ui_MainWindow(object):
         self.label.setGeometry(QtCore.QRect(40, 40, 141, 31))
         self.label.setObjectName("label")
         
-        self.lineEdit = QtWidgets.QLineEdit(self.scraping_tab)
-        self.lineEdit.setGeometry(QtCore.QRect(190, 40, 650, 31))
-        self.lineEdit.setObjectName("lineEdit")
-        
-        self.label_player = QtWidgets.QLabel(self.scraping_tab)
-        self.label_player.setGeometry(QtCore.QRect(40, 90, 141, 31))
-        self.label_player.setObjectName("label_player")
+        self.comboBox_start_year = QtWidgets.QComboBox(self.scraping_tab)
+        self.comboBox_start_year.setGeometry(QtCore.QRect(300, 80, 100, 31))
+        self.comboBox_start_year.addItems([str(year) for year in range(1970, 2023)])  
+        self.comboBox_start_year.setObjectName("comboBox_start_year")
+        self.comboBox_start_year.setCurrentText("2000") 
 
-        self.comboBox = QtWidgets.QComboBox(self.scraping_tab)
-        self.comboBox.setGeometry(QtCore.QRect(190, 80, 650, 31))
-        self.comboBox.addItems(["passing", "rushing", "receiving"])
-        self.comboBox.setObjectName("comboBox")
+        self.comboBox_end_year = QtWidgets.QComboBox(self.scraping_tab)
+        self.comboBox_end_year.setGeometry(QtCore.QRect(450, 80, 100, 31))
+        self.comboBox_end_year.addItems([str(year) for year in range(1970, 2023)])
+        self.comboBox_end_year.setObjectName("comboBox_end_year")
+        self.comboBox_end_year.setCurrentText("2020") 
+
+        self.label_years = QtWidgets.QLabel(self.scraping_tab)
+        self.label_years.setGeometry(QtCore.QRect(300, 40, 300, 20))
+        self.label_years.setObjectName("label_years")
+        self.label_years.setText(QtCore.QCoreApplication.translate("MainWindow", "Years: (Start) to (End)"))
+
+        self.checkBox_passing = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_passing.setGeometry(QtCore.QRect(50, 40, 200, 31))
+        self.checkBox_passing.setText("Passing")
+        self.checkBox_passing.setObjectName("checkBox_passing")
+
+        self.checkBox_rushing = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_rushing.setGeometry(QtCore.QRect(50, 80, 200, 31))
+        self.checkBox_rushing.setText("Rushing")
+        self.checkBox_rushing.setObjectName("checkBox_rushing")
+
+        self.checkBox_receiving = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_receiving.setGeometry(QtCore.QRect(50, 120, 200, 31))
+        self.checkBox_receiving.setText("Receiving")
+        self.checkBox_receiving.setObjectName("checkBox_receiving")
 
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
-        self.pushButton_all.setGeometry(QtCore.QRect(450, 140, 89, 25))
+        self.pushButton_all.setGeometry(QtCore.QRect(600, 80, 89, 25))
         self.pushButton_all.setObjectName("pushButton_all")
 
         # add scraping tab to the tab widget
@@ -123,7 +142,6 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
-        self.label.setText(_translate("MainWindow", "Enter NFL URL:"))
         self.pushButton_all.setText(_translate("MainWindow", "Scrape URL"))
         self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
@@ -149,18 +167,35 @@ class Ui_MainWindow(object):
         self.pushButton_legend.clicked.connect(self.show_legend)
 
     def scrape_all(self):
-        url = self.lineEdit.text()
-        stat_type = self.comboBox.currentText()
-        if stat_type == 'passing':
-            max_players = 35
-        elif stat_type == 'rushing':
-            max_players = 50
-        elif stat_type == 'receiving':
-            max_players = 100
-        else:
-            raise ValueError(f"Unknown stat type: {stat_type}")
-        webscraper.scrape_all(url, stat_type, max_players)
-        QMessageBox.information(self.centralwidget, "Success", f"All {stat_type.capitalize()} data scraped successfully.")
+        stat = []
+        if self.checkBox_passing.isChecked():
+            stat.append("passing")
+        if self.checkBox_rushing.isChecked():
+            stat.append("rushing")
+        if self.checkBox_receiving.isChecked():
+            stat.append("receiving")
+        if not stat:
+            QMessageBox.warning(self.centralwidget, "Warning", "No stat type selected.")
+            return
+
+        start_year = int(self.comboBox_start_year.currentText())
+        end_year = int(self.comboBox_end_year.currentText())
+        if start_year > end_year:
+            QMessageBox.warning(self.centralwidget, "Warning", "Start year should be less than or equal to end year.")
+            return
+
+        for stat_type in stat:
+            if stat_type == 'passing':
+                max_players = 35
+            elif stat_type == 'rushing':
+                max_players = 50
+            elif stat_type == 'receiving':
+                max_players = 100
+            else:
+                raise ValueError(f"Unknown stat type: {stat_type}")
+            webscraper.scrape_all([stat_type], max_players, start_year, end_year)
+
+        QMessageBox.information(self.centralwidget, "Success", f"Data for {', '.join(stat).capitalize()} for {start_year}-{end_year} scraped successfully.")
 
     def load_json_file(self):
         self.data_processor.load_json()
