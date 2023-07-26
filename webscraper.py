@@ -10,7 +10,7 @@ def scrape_all(stat_types, max_players, start_year, end_year):
         "receiving": ['Player', 'Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
     }
 
-    base_url = "https://www.nfl.com/stats/player-stats/category/passing/2023/reg/all"
+    base_url = "https://www.nfl.com/stats/player-stats/category/{stat_type}/{year}/reg/all"
 
     for stat_type in stat_types:
         headers = headers_dict[stat_type]
@@ -24,7 +24,7 @@ def scrape_all(stat_types, max_players, start_year, end_year):
 
         for year in range(start_year, end_year+1):
             player_count = 0
-            current_url = base_url.replace("passing", stat_type).replace("2023", str(year))
+            current_url = base_url.format(stat_type=stat_type, year=year)
 
             while player_count < max_players:
                 response = requests.get(current_url)
