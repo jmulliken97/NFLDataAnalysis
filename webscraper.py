@@ -83,5 +83,3 @@ def scrape_all(stat_type, max_players, start_year, end_year):
             json.dump(all_stats, json_file)
 
     return all_stats
-
-
