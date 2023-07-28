@@ -11,23 +11,21 @@ class DataProcessor:
         self.data_dict = {}
         self.textEdit = text_edit_widget
         self.league = None
+        self.passing_headers = ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
+        self.rushing_headers = ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
         
     def determine_stats_type(self, stats):
-        passing_headers = ['Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY']
-        rushing_headers = ['Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM']
-        receiving_headers = ['Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
-
         stats_keys = stats.keys()
+        stat_types = [("passing", self.passing_headers), 
+                    ("rushing", self.rushing_headers), 
+                    ("receiving", self.receiving_headers)]
 
-        if all(item in stats_keys for item in passing_headers):
-            return "passing"
-        elif all(item in stats_keys for item in rushing_headers):
-            return "rushing"
-        elif all(item in stats_keys for item in receiving_headers):
-            return "receiving"
-        else:
-            return "unknown"
+        for stat_type, headers in stat_types:
+            if all(item in stats_keys for item in headers):
+                return stat_type
 
+        return "unknown"
 
     def calculate_score(self, player_data):
         player = player_data.copy()
@@ -35,22 +33,22 @@ class DataProcessor:
         weights = None
         if stats_type == "passing":
             weights = {
-                "Pass Yds": 0.05,
-                "Yds/Att": 0.15,
-                "Cmp %": 0.15,
+                "Yds": 0.05,
+                "YPA": 0.15,
+                "Pct": 0.15,
                 "TD:INT Ratio": 0.2,
                 "Rate": 0.05,
-                "Sck": -0.05,
-                "SckY": -0.05,
+                "Sack": -0.05,
+                "Loss": -0.05,
                 "ANY/A": 0.2,
             }
 
-            if player.get("INT") != 0:
-                player["TD:INT Ratio"] = round(player["TD"] / player["INT"], 2)
+            if player.get("Int") != 0:
+                player["TD:INT Ratio"] = round(player["TD"] / player["Int"], 2)
             else:
                 player["TD:INT Ratio"] = round(player["TD"], 2)
 
-            player["ANY/A"] = round((player["Pass Yds"] + 20 * player["TD"] - 45 * player["INT"] - player["SckY"]) / (player["Att"] + player["Sck"]), 2)
+            player["ANY/A"] = round((player["Yds"] + 20 * player["TD"] - 45 * player["Int"] - player["Loss"]) / (player["Att"] + player["Sack"]), 2)
 
         elif stats_type == "rushing":
             weights = {

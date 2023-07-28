@@ -193,7 +193,7 @@ class Ui_MainWindow(object):
                 max_players = 100
             else:
                 raise ValueError(f"Unknown stat type: {stat_type}")
-            webscraper.scrape_all([stat_type], max_players, start_year, end_year)
+            webscraper.scrape_all(stat_type, max_players, start_year, end_year)
 
         QMessageBox.information(self.centralwidget, "Success", f"Data for {', '.join(stat).capitalize()} for {start_year}-{end_year} scraped successfully.")
 
@@ -214,7 +214,6 @@ class Ui_MainWindow(object):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
         self.comboBox_sort_column.clear()
         self.comboBox_sort_options.addItems(self.data_processor.get_columns())
-
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
@@ -264,7 +263,7 @@ class Ui_MainWindow(object):
         text_edit.append("<b>SckY:</b> Yards lost due to sacks")
         text_edit.append("<b>TD:INT Ratio:</b> Ratio of touchdowns to interceptions")
         text_edit.append("<b>ANY/A:</b> Adjusted net yards per pass attempt")
-        
+
         text_edit.append("\n<b><u>Rushing Stats:</u></b>")
         text_edit.append("<b>Rush Yds:</b> Total rushing yards")
         text_edit.append("<b>Att:</b> Number of attempts")
@@ -275,7 +274,7 @@ class Ui_MainWindow(object):
         text_edit.append("<b>Rush 1st:</b> Number of first downs")
         text_edit.append("<b>Rush 1st%:</b> First down percentage")
         text_edit.append("<b>Rush FUM:</b> Number of fumbles")
-        
+
         text_edit.append("\n<b><u>Receiving Stats:</u></b>")
         text_edit.append("<b>Rec:</b> Number of receptions")
         text_edit.append("<b>Yds:</b> Total receiving yards")
