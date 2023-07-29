@@ -5,6 +5,15 @@ import os
 import pandas as pd
 import time
 
+def clean_player_name(name):
+    return name.split('\xa0')[0]
+
+def clean_lg_field(lg):
+    if isinstance(lg, str) and 't' in lg:
+        return int(lg.replace('t', '')), True
+    else:
+        return lg, False
+
 def scrape_all(stat_type, max_players, start_year, end_year):
     headers_dict = {
         "passing": ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%T%', 'Int', 'Int%I%', 'Lg', 'Sack', 'Loss', 'Rate'],
@@ -31,16 +40,14 @@ def scrape_all(stat_type, max_players, start_year, end_year):
             table = soup.find_all('table')[0] 
             df = pd.read_html(str(table))[0]
 
-            # Clean column names
             df.columns = df.columns.str.replace('Int%I%', 'Int%')
             df.columns = df.columns.str.replace('TD%T%', 'TD%')
 
-            # Update headers to match cleaned column names
             headers = df.columns.tolist()
 
             for _, row in df.iterrows():
                 name = row['Player']
-                name = name.split('\u00a0')[0]  # Clean player name
+                name = clean_player_name(name)
 
                 stats = {}
                 for idx, stat_name in enumerate(headers):
@@ -51,6 +58,10 @@ def scrape_all(stat_type, max_players, start_year, end_year):
                         stat_value = float(stat_value)
                     except ValueError:
                         pass  # If it can't be converted to a float, leave it as a string
+
+                    if stat_name == 'Lg':
+                        stat_value, lg_td = clean_lg_field(stat_value)
+                        stats['Lg TD'] = lg_td
 
                     stats[stat_name] = stat_value
 
@@ -83,3 +94,4 @@ def scrape_all(stat_type, max_players, start_year, end_year):
             json.dump(all_stats, json_file)
 
     return all_stats
+

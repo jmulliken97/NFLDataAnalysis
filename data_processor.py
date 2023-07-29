@@ -18,14 +18,40 @@ class DataProcessor:
     def determine_stats_type(self, stats):
         stats_keys = stats.keys()
         stat_types = [("passing", self.passing_headers), 
-                    ("rushing", self.rushing_headers), 
-                    ("receiving", self.receiving_headers)]
+                      ("rushing", self.rushing_headers), 
+                      ("receiving", self.receiving_headers)]
 
         for stat_type, headers in stat_types:
             if all(item in stats_keys for item in headers):
                 return stat_type
 
         return "unknown"
+    
+    @classmethod
+    def clean_lg_field(cls, data):
+        for year, players in data.items():
+            for player, stats in players.items():
+                if 'Lg' in stats and isinstance(stats['Lg'], str):
+                    stats['Lg TD'] = 't' in stats['Lg']
+                    stats['Lg'] = int(stats['Lg'].replace('t', ''))
+        return data
+    
+    @classmethod
+    def clean_player_name(cls, data):
+        for year, players in data.items():
+            for player, stats in players.items():
+                name_parts = stats['Player'].split('\xa0')
+                clean_name = name_parts[0]
+                if '.' in clean_name:
+                    clean_name = clean_name.split('.')[0]
+                stats['Player'] = clean_name
+        return data
+
+    
+    def clean_data(self, data):
+        data = self.clean_player_name(data)
+        data = self.clean_lg_field(data)
+        return data
 
     def calculate_score(self, player_data):
         player = player_data.copy()
@@ -97,17 +123,19 @@ class DataProcessor:
                     flattened_data.append(stats)
                 
         return pd.DataFrame(flattened_data)
-
+    
     def load_json(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
         if file_name[0]:
             self.file_name = file_name[0]
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
+                data = self.clean_data(data)
                 for year, year_data in data.items():
-                    for player, stats in year_data.items():
-                        stats['Score'] = self.calculate_score(stats)
-                    self.data_dict[year] = pd.DataFrame.from_records(list(year_data.values()))
+                    df = pd.DataFrame.from_records(list(year_data.values()))
+                    for _, player in df.iterrows():
+                        player['Score'] = self.calculate_score(player)
+                    self.data_dict[year] = df
 
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)

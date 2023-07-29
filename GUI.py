@@ -200,7 +200,7 @@ class Ui_MainWindow(object):
     def load_json_file(self):
         self.data_processor.load_json()
         self.comboBox_year.clear()
-        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys()))
+        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
         self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")
 
         year = self.comboBox_year.currentText()
@@ -217,12 +217,16 @@ class Ui_MainWindow(object):
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
+        index = self.comboBox_sort_options.findText("yds")
+        if index >= 0:
+            self.comboBox_sort_options.setCurrentIndex(index)
         sort_by = self.comboBox_sort_options.currentText()
         sort_order = self.comboBox_sort_order.currentText() 
         self.data_processor.sort_dataframe(year, sort_by, sort_order)
         self.update_table()
         
     def update_table(self):
+        self.tableWidget.clearContents()
         year = self.comboBox_year.currentText()
         if year in self.data_processor.data_dict:
             data_df = self.data_processor.data_dict[year]
@@ -234,7 +238,7 @@ class Ui_MainWindow(object):
                     self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
         else:
             print(f"No data for year {year}")
-         
+
     def show_legend(self):
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Legend")
