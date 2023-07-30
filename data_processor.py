@@ -11,73 +11,124 @@ class DataProcessor:
         self.data_dict = {}
         self.textEdit = text_edit_widget
         self.league = None
+        self.passing_headers = ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
+        self.rushing_headers = ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
         
     def determine_stats_type(self, stats):
-        passing_headers = ['Pass Yds', 'Yds/Att', 'Att', 'Cmp', 'Cmp %', 'TD', 'INT', 'Rate', '1st', '1st%', '20+', '40+', 'Lng', 'Sck', 'SckY']
-        rushing_headers = ['Rush Yds', 'Att', 'TD', '20+', '40+', 'Lng', 'Rush 1st', 'Rush 1st%', 'Rush FUM']
-        receiving_headers = ['Rec', 'Yds', 'TD', '20+', '40+', 'LNG', 'Rec 1st', '1st%', 'Rec FUM', 'Rec YAC/R', 'Tgts']
-
         stats_keys = stats.keys()
+        stat_types = [("passing", self.passing_headers), 
+                      ("rushing", self.rushing_headers), 
+                      ("receiving", self.receiving_headers)]
 
-        if all(item in stats_keys for item in passing_headers):
-            return "passing"
-        elif all(item in stats_keys for item in rushing_headers):
-            return "rushing"
-        elif all(item in stats_keys for item in receiving_headers):
-            return "receiving"
-        else:
-            return "unknown"
+        for stat_type, headers in stat_types:
+            if all(item in stats_keys for item in headers):
+                return stat_type
 
+        return "unknown"
+    
+    @classmethod
+    def clean_lg_field(cls, data):
+        for year, players in data.items():
+            for player, stats in players.items():
+                if 'Lg' in stats and isinstance(stats['Lg'], str):
+                    stats['Lg TD'] = 't' in stats['Lg']
+                    stats['Lg'] = int(stats['Lg'].replace('t', ''))
+        return data
+    
+    @classmethod
+    def clean_player_name(cls, data):
+        for year, players in data.items():
+            for player, stats in players.items():
+                name_parts = stats['Player'].split('\xa0')
+                clean_name = name_parts[0]
+                if '.' in clean_name:
+                    clean_name = clean_name.split('.')[0]
+                stats['Player'] = clean_name
+        return data
+
+    
+    def clean_data(self, data):
+        data = self.clean_player_name(data)
+        data = self.clean_lg_field(data)
+        return data
 
     def calculate_score(self, player_data):
         player = player_data.copy()
-        stats_type = self.determine_stats_type(player_data)
+        
+        def determine_stats_type(stats):
+            stats_keys = stats.keys()
+            stat_types = [("passing", ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'Int', 'Int%', 'Lg TD', 'Lg', 'Sack', 'Loss', 'Rate']), 
+                        ("rushing", ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD']),
+                        ("receiving", ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC'])]
+
+            for stat_type, headers in stat_types:
+                if all(item in stats_keys for item in headers):
+                    return stat_type
+            return "unknown"
+
+        stats_type = determine_stats_type(player_data)
         weights = None
         if stats_type == "passing":
             weights = {
-                "Pass Yds": 0.05,
-                "Yds/Att": 0.15,
-                "Cmp %": 0.15,
+                "Yds": 0.05,
+                "YPA": 0.15,
+                "Pct": 0.15,
                 "TD:INT Ratio": 0.2,
                 "Rate": 0.05,
-                "Sck": -0.05,
-                "SckY": -0.05,
+                "Sack": -0.05,
+                "Loss": -0.05,
                 "ANY/A": 0.2,
             }
-
-            if player.get("INT") != 0:
-                player["TD:INT Ratio"] = round(player["TD"] / player["INT"], 2)
+            for key in ["Yds", "YPA", "Pct", "TD", "Int", "Rate", "Sack", "Loss", "Att"]:
+                if key in player:
+                    player[key] = float(player[key])
+                                
+            if player.get("Int") != 0:
+                player["TD:INT Ratio"] = round(player["TD"] / player["Int"], 2)
             else:
                 player["TD:INT Ratio"] = round(player["TD"], 2)
 
-            player["ANY/A"] = round((player["Pass Yds"] + 20 * player["TD"] - 45 * player["INT"] - player["SckY"]) / (player["Att"] + player["Sck"]), 2)
+            player["ANY/A"] = round((player["Yds"] + 20 * player["TD"] - 45 * player["Int"] - player["Loss"]) / (player["Att"] + player["Sack"]), 2)
 
         elif stats_type == "rushing":
+            player["Y/A"] = player["Yds"] / player["Att"] if player["Att"] else 0
+            player["TD/A"] = player["TD"] / player["Att"] if player["Att"] else 0
+            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
+
             weights = {
-                "Rush Yds": 0.05,
-                "Att": 0.15,
-                "TD": 0.2,
-                "20+": 0.05,
-                "40+": 0.05,
-                "Lng": 0.2,
-                "Rush 1st": 0.05,
-                "Rush 1st%": 0.15,
-                "Rush FUM": -0.1,
-            }
-        
-        elif stats_type == "receiving":
-            weights = {
-                "Rec": 0.15,
                 "Yds": 0.15,
-                "TD": 0.2,
-                "20+": 0.05,
-                "40+": 0.05,
-                "LNG": 0.1,
-                "Rec 1st": 0.1,
-                "1st%": 0.1,
-                "Rec FUM": -0.1,
-                "Rec YAC/R": 0.05,
-                "Tgts": 0.05,
+                "Att": 0.15,
+                "TD": 0.15,
+                "Avg": 0.15,
+                "YPG": 0.1,
+                "Lg": 0.05,
+                "Y/A": 0.1,
+                "TD/A": 0.1,
+                "TD/G": 0.1
+            }
+
+        elif stats_type == "receiving":
+            player["Y/R"] = player["Yds"] / player["Rec"] if player["Rec"] else 0
+            player["TD/R"] = player["TD"] / player["Rec"] if player["Rec"] else 0
+            player["Y/Tgt"] = player["Yds"] / player["Tar"] if player["Tar"] else 0
+            player["Rec/Tgt"] = player["Rec"] / player["Tar"] if player["Tar"] else 0
+            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
+
+            weights = {
+                "Rec": 0.1,
+                "Yds": 0.1,
+                "TD": 0.15,
+                "Avg": 0.1,
+                "YPG": 0.1,
+                "Lg": 0.1,
+                "Tar": 0.05,
+                "YAC": 0.05,
+                "Y/R": 0.05,
+                "TD/R": 0.05,
+                "Y/Tgt": 0.05,
+                "Rec/Tgt": 0.05,
+                "TD/G": 0.1
             }
 
         if weights is None:
@@ -85,19 +136,10 @@ class DataProcessor:
 
         score = 0
         for stat, weight in weights.items():
-            score += player.get(stat, 0) * weight
+            if player.get(stat) is not None:
+                score += player.get(stat, 0) * weight
 
-        return score
-
-    def flatten(self, d, parent_key='', sep='_'):
-        items = []
-        for k, v in d.items():
-            new_key = parent_key + sep + k if parent_key else k
-            if isinstance(v, MutableMapping):
-                items.extend(self.flatten(v, new_key, sep=sep).items())
-            else:
-                items.append((new_key, v))
-        return dict(items)
+        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A")
 
     def flatten_json(self, data):
         flattened_data = []
@@ -107,23 +149,43 @@ class DataProcessor:
                     stats['Year'] = year  
                     stats['Player'] = player  
                     flattened_data.append(stats)
-                
         return pd.DataFrame(flattened_data)
-
+    
     def load_json(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
         if file_name[0]:
             self.file_name = file_name[0]
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
+                data = self.clean_data(data)
                 for year, year_data in data.items():
-                    for player, stats in year_data.items():
-                        stats['Score'] = self.calculate_score(stats)
-                    self.data_dict[year] = pd.DataFrame.from_records(list(year_data.values()))
-
+                    df = pd.DataFrame.from_records(list(year_data.values()))
+                    scores = []
+                    td_int_ratios = []
+                    any_as = []
+                    efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
+                                        "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
+                    for _, player in df.iterrows():
+                        score, td_int_ratio, any_a = self.calculate_score(player)
+                        scores.append(score)
+                        if td_int_ratio is not None:
+                            td_int_ratios.append(round(td_int_ratio, 2))
+                        if any_a is not None:
+                            any_as.append(round(any_a, 2))
+                        for metric in efficiency_metrics.keys():
+                            if player.get(metric) is not None: 
+                                efficiency_metrics[metric].append(round(player.get(metric), 2))
+                    df['Score'] = scores
+                    if td_int_ratios:
+                        df['TD:INT Ratio'] = td_int_ratios
+                    if any_as:
+                        df['ANY/A'] = any_as
+                    for metric, values in efficiency_metrics.items():
+                        if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                            df[metric] = values
+                    self.data_dict[year] = df
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)
-                
             columns = self.get_columns()
 
     def get_file_name(self):
@@ -160,11 +222,15 @@ class DataProcessor:
         else:
             self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)
   
-    def correlation_analysis(self, year):
-        if year in self.data_dict:
-            numeric_df = self.data_dict[year].select_dtypes(include=[np.number])  
-            return numeric_df.corr()
-        return None
+    def correlation_analysis(self, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:  
+            combined_df = self.data_dict[year]
+        else: 
+            return None
+        numeric_df = combined_df.select_dtypes(include=[np.number])
+        return numeric_df.corr()
 
     def descriptive_stats(self, year=None):
         if year is None: 
@@ -176,21 +242,15 @@ class DataProcessor:
         numeric_df = combined_df.select_dtypes(include=[np.number])
         return numeric_df.describe()
     
-    def compare_stats(self, stats, players, years=None):
-        comparison_results = ""
-        for year, dataframe in self.data_dict.items():
-            if years and year not in years:
-                continue
-            for player in players:
-                player_data = dataframe[dataframe['Player'] == player]
-                print(f"Data for player {player} in {year}: {player_data}")
-                if not player_data.empty:
-                    comparison_results += f"Stats for {player} in {year}:\n"
-                    for stat in stats:
-                        stat_value = player_data[stat].values[0]
-                        comparison_results += f"{stat}: {stat_value}\n"
-                    comparison_results += "\n"
-        return comparison_results
+    def distribution(self, stat, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:
+            combined_df = self.data_dict[year]
+        else:
+            return None
+        stat_data = combined_df[stat]
+        return stat_data
 
     def plot_player_stat(self, player_name, stat_column):
         df_selected = pd.DataFrame()
