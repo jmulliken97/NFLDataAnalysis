@@ -42,12 +42,11 @@ class DataProcessor:
             for player, stats in players.items():
                 name_parts = stats['Player'].split('\xa0')
                 clean_name = name_parts[0]
-                if '.' in clean_name:
-                    clean_name = clean_name.split('.')[0]
+                if clean_name[-1].isalpha() and len(clean_name[-1]) == 1:
+                    clean_name = clean_name[:-1]
                 stats['Player'] = clean_name
         return data
 
-    
     def clean_data(self, data):
         data = self.clean_player_name(data)
         data = self.clean_lg_field(data)
