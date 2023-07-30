@@ -158,6 +158,7 @@ class DataProcessor:
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
                 data = self.clean_data(data)
+                self.data_dict = {}
                 for year, year_data in data.items():
                     df = pd.DataFrame.from_records(list(year_data.values()))
                     scores = []
@@ -251,6 +252,24 @@ class DataProcessor:
             return None
         stat_data = combined_df[stat]
         return stat_data
+    
+    def detect_outliers(self, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:
+            combined_df = self.data_dict[year]
+        else:
+            return None
+        numeric_df = combined_df.select_dtypes(include=[np.number])
+        Q1 = numeric_df.quantile(0.25)
+        Q3 = numeric_df.quantile(0.75)
+        IQR = Q3 - Q1
+        outlier_mask = (numeric_df < (Q1 - 1.5 * IQR)) | (numeric_df > (Q3 + 1.5 * IQR))
+        outliers_df = numeric_df[outlier_mask]
+
+        outliers_df = outliers_df.dropna(how='all')
+
+        return outliers_df
 
     def plot_player_stat(self, player_name, stat_column):
         df_selected = pd.DataFrame()

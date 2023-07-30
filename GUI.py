@@ -128,9 +128,9 @@ class Ui_MainWindow(object):
         # self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 140, 150, 30)) 
         # self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
 
-        # self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
-        # self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 180, 150, 30)) 
-        # self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
+        self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 260, 175, 30)) 
+        self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "Data Viewer")
@@ -150,7 +150,7 @@ class Ui_MainWindow(object):
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
         self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
         # self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
-        # self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
+        self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
 
         # Connect button to function
         self.pushButton_all.clicked.connect(self.scrape_all)
@@ -163,7 +163,7 @@ class Ui_MainWindow(object):
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
         self.pushButton_display_stats.clicked.connect(self.display_stats)
         # self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
-        # self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
+        self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
 
     def scrape_all(self):
@@ -250,50 +250,71 @@ class Ui_MainWindow(object):
 
         # Display the legend
         text_edit.append("<b><u>Passing Stats:</u></b>")
-        text_edit.append("<b>Pass Yds:</b> Total passing yards")
-        text_edit.append("<b>Yds/Att:</b> Yards per attempt")
+        text_edit.append("<b>Player:</b> Player's name")
+        text_edit.append("<b>Team:</b> Player's team")
+        text_edit.append("<b>Gms:</b> Number of games")
         text_edit.append("<b>Att:</b> Number of attempts")
         text_edit.append("<b>Cmp:</b> Number of completions")
-        text_edit.append("<b>Cmp %:</b> Completion percentage")
+        text_edit.append("<b>Pct:</b> Completion percentage")
+        text_edit.append("<b>Yds:</b> Total passing yards")
+        text_edit.append("<b>YPA:</b> Yards per attempt")
         text_edit.append("<b>TD:</b> Number of touchdowns")
-        text_edit.append("<b>INT:</b> Number of interceptions")
+        text_edit.append("<b>TD%:</b> Touchdown percentage")
+        text_edit.append("<b>Int:</b> Number of interceptions")
+        text_edit.append("<b>Int%:</b> Interception percentage")
+        text_edit.append("<b>Lg TD:</b> Longest Pass TD?")
+        text_edit.append("<b>Lg:</b> Longest pass")
+        text_edit.append("<b>Sack:</b> Number of sacks")
+        text_edit.append("<b>Loss:</b> Yards lost due to sacks")
         text_edit.append("<b>Rate:</b> Quarterback rating")
-        text_edit.append("<b>1st:</b> Number of first downs")
-        text_edit.append("<b>1st%:</b> First down percentage")
-        text_edit.append("<b>20+:</b> Number of 20+ yards passes")
-        text_edit.append("<b>40+:</b> Number of 40+ yards passes")
-        text_edit.append("<b>Lng:</b> Longest pass")
-        text_edit.append("<b>Sck:</b> Number of sacks")
-        text_edit.append("<b>SckY:</b> Yards lost due to sacks")
-        text_edit.append("<b>TD:INT Ratio:</b> Ratio of touchdowns to interceptions")
-        text_edit.append("<b>ANY/A:</b> Adjusted net yards per pass attempt")
+        text_edit.append("<b>Score:</b> Calculated Player Score")
+        text_edit.append("<b>TD:INT Ratio:</b> Ratio of TDs to INTs")
+        text_edit.append("<b>ANY/A</b> Adjusted Net Yards per Pass Attempt")
 
         text_edit.append("\n<b><u>Rushing Stats:</u></b>")
-        text_edit.append("<b>Rush Yds:</b> Total rushing yards")
+        text_edit.append("<b>Player:</b> Player's name")
+        text_edit.append("<b>Team:</b> Player's team")
+        text_edit.append("<b>Gms:</b> Number of games")
         text_edit.append("<b>Att:</b> Number of attempts")
+        text_edit.append("<b>Yds:</b> Total rushing yards")
+        text_edit.append("<b>Avg:</b> Average yards per rush")
+        text_edit.append("<b>YPG:</b> Rushing yards per game")
+        text_edit.append("<b>Lg TD:</b> Longest rush a TD?")
+        text_edit.append("<b>Lg:</b> Longest rush")
         text_edit.append("<b>TD:</b> Number of touchdowns")
-        text_edit.append("<b>20+:</b> Number of 20+ yards rushes")
-        text_edit.append("<b>40+:</b> Number of 40+ yards rushes")
-        text_edit.append("<b>Lng:</b> Longest rush")
-        text_edit.append("<b>Rush 1st:</b> Number of first downs")
-        text_edit.append("<b>Rush 1st%:</b> First down percentage")
-        text_edit.append("<b>Rush FUM:</b> Number of fumbles")
+        text_edit.append("<b>FD:</b> Number of first downs")
+        text_edit.append("<b>Score:</b> Calculated Player Score")
+        
+        text_edit.append("\n<b><u>Rushing Efficiency Stats:</u></b>")
+        text_edit.append("<b>Y/A:</b> Yards per attempt")
+        text_edit.append("<b>TD/A:</b> Touchdowns per attempt")
+        text_edit.append("<b>TD/G:</b> Touchdowns per game")
 
         text_edit.append("\n<b><u>Receiving Stats:</u></b>")
+        text_edit.append("<b>Player:</b> Player's name")
+        text_edit.append("<b>Team:</b> Player's team")
+        text_edit.append("<b>Gms:</b> Number of games")
         text_edit.append("<b>Rec:</b> Number of receptions")
         text_edit.append("<b>Yds:</b> Total receiving yards")
+        text_edit.append("<b>Avg:</b> Average yards per reception")
+        text_edit.append("<b>YPG:</b> Receiving yards per game")
+        text_edit.append("<b>Lg TD:</b> Longest touchdown reception")
+        text_edit.append("<b>Lg:</b> Longest reception")
         text_edit.append("<b>TD:</b> Number of receiving touchdowns")
-        text_edit.append("<b>20+:</b> Number of 20+ yards receptions")
-        text_edit.append("<b>40+:</b> Number of 40+ yards receptions")
-        text_edit.append("<b>LNG:</b> Longest reception")
-        text_edit.append("<b>Rec 1st:</b> Number of first downs from receptions")
-        text_edit.append("<b>1st%:</b> Percentage of receptions for first downs")
-        text_edit.append("<b>Rec FUM:</b> Number of fumbles during receptions")
-        text_edit.append("<b>Rec YAC/R:</b> Average yards after catch per reception")
-        text_edit.append("<b>Tgts:</b> Number of times targeted by the quarterback")
+        text_edit.append("<b>FD:</b> Number of first downs from receptions")
+        text_edit.append("<b>Tar:</b> Number of times targeted by the quarterback")
+        text_edit.append("<b>YAC:</b> Yards after catch")
+        text_edit.append("<b>Score:</b> Calculated Player Score")
+        
+        text_edit.append("\n<b><u>Receiving Efficiency Stats:</u></b>")
+        text_edit.append("<b>Y/R:</b> Yards per reception")
+        text_edit.append("<b>TD/R:</b> Touchdowns per reception")
+        text_edit.append("<b>Y/Tgt:</b> Yards per target")
+        text_edit.append("<b>Rec/Tgt:</b> Receptions per target")
+        text_edit.append("<b>TD/G:</b> Touchdowns per game")
 
         dialog.exec_()
-        
+
     def correlation_analysis(self):
         years = list(self.data_processor.data_dict.keys())
         years.append('All')
@@ -359,15 +380,43 @@ class Ui_MainWindow(object):
     #     self.data_processor.handle_missing_data(year)
     #     self.textEdit.setText("Missing data has been handled.")
 
-    # def detect_outliers(self):
-    #     year = self.comboBox_year.currentText()
-    #     stat = self.comboBox_stats.currentText()
-    #     outliers = self.data_processor.detect_outliers(year, stat)
-    #     if outliers is not None and not outliers.empty:
-    #         self.textEdit.setText(outliers.to_string(index=False))
-    #     else:
-    #         self.textEdit.setText("No outliers detected for the selected year and stat.")
-  
+    def detect_outliers(self):
+        years = list(self.data_processor.data_dict.keys())
+        years.append('All')
+        year, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a year:", years, editable=False)
+        if ok:
+            year = None if year == 'All' else year
+            outliers_df = self.data_processor.detect_outliers(year)
+            if outliers_df is not None and not outliers_df.empty:
+                dialog = QtWidgets.QDialog()
+                dialog.setWindowTitle("Outliers Analysis")
+                dialog.resize(1000, 700)
+
+                table = QtWidgets.QTableWidget()
+                table.setColumnCount(len(outliers_df.columns))
+                table.setRowCount(len(outliers_df.index))
+                table.setHorizontalHeaderLabels(outliers_df.columns)
+                table.setVerticalHeaderLabels(outliers_df.index.astype(str))
+
+                for i in range(len(outliers_df.index)):
+                    for j in range(len(outliers_df.columns)):
+                        item = QtWidgets.QTableWidgetItem(str(outliers_df.iat[i, j]))
+                        table.setItem(i, j, item)
+
+                layout = QtWidgets.QVBoxLayout()
+                layout.addWidget(table)
+                dialog.setLayout(layout)
+
+                explanation = "The table below shows the detected outliers for the selected year. An outlier is a data point that significantly differs from other observations. It could be due to variability in the data or experimental errors."
+                label = QtWidgets.QLabel(explanation)
+                layout.insertWidget(0, label)
+
+                dialog.exec_()
+            else:
+                self.textEdit.setText("No outliers detected for the selected year.")
+        else:
+            self.textEdit.setText("No year selected.")
+
     def distribution(self):
         stat, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
         if not ok:
