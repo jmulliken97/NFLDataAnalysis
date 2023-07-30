@@ -5,7 +5,11 @@ from qt_material import apply_stylesheet
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    apply_stylesheet(app, theme='dark_teal.xml')
+    extra = {
+        'font_family': 'Roboto',
+        'font_size': '10px'  # Adjust the size
+    }
+    apply_stylesheet(app, theme='dark_teal.xml', extra=extra)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)

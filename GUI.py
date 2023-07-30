@@ -42,7 +42,7 @@ class Ui_MainWindow(object):
         self.comboBox_end_year.setGeometry(QtCore.QRect(450, 80, 100, 31))
         self.comboBox_end_year.addItems([str(year) for year in range(1970, 2023)])
         self.comboBox_end_year.setObjectName("comboBox_end_year")
-        self.comboBox_end_year.setCurrentText("2020") 
+        self.comboBox_end_year.setCurrentText("2022") 
 
         self.label_years = QtWidgets.QLabel(self.scraping_tab)
         self.label_years.setGeometry(QtCore.QRect(300, 40, 300, 20))
@@ -65,7 +65,7 @@ class Ui_MainWindow(object):
         self.checkBox_receiving.setObjectName("checkBox_receiving")
 
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
-        self.pushButton_all.setGeometry(QtCore.QRect(600, 80, 89, 25))
+        self.pushButton_all.setGeometry(QtCore.QRect(800, 80, 175, 30))
         self.pushButton_all.setObjectName("pushButton_all")
 
         # add scraping tab to the tab widget
@@ -80,48 +80,48 @@ class Ui_MainWindow(object):
         self.comboBox_sort_column.setObjectName("comboBox_sort_column")
         
         self.tableWidget = QtWidgets.QTableWidget(self.json_tab)
-        self.tableWidget.setGeometry(QtCore.QRect(40, 60, 711, 700))
+        self.tableWidget.setGeometry(QtCore.QRect(10, 60, 765, 690))
 
         # add widgets to the json tab
-        self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_load.setGeometry(QtCore.QRect(500, 20, 89, 25))
-        self.pushButton_load.setObjectName("pushButton_load")
-        
         self.comboBox_year = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_year.setGeometry(QtCore.QRect(40, 20, 75, 31))
+        self.comboBox_year.setGeometry(QtCore.QRect(10, 20, 75, 31))
         self.comboBox_year.setObjectName("comboBox_year")
 
         self.comboBox_sort_options = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_sort_options.setGeometry(QtCore.QRect(130, 20, 100, 31))
+        self.comboBox_sort_options.setGeometry(QtCore.QRect(100, 20, 100, 31))
         self.comboBox_sort_options.setObjectName("comboBox_sort_options")
         
-        self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_legend.setGeometry(QtCore.QRect(350, 20, 89, 25))
-        self.pushButton_legend.setObjectName("pushButton_legend")
-
-        self.pushButton_plot = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_plot.setGeometry(QtCore.QRect(600, 20, 89, 25))
-        self.pushButton_plot.setObjectName("pushButton_plot")
+        self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
+        self.comboBox_sort_order.setGeometry(QtCore.QRect(215, 20, 100, 31)) 
+        self.comboBox_sort_order.addItems(["Descending", "Ascending"])
+        self.comboBox_sort_order.setObjectName("comboBox_sort_order")
         
         self.label_filename = QtWidgets.QLabel(self.centralwidget)
         self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
         self.label_filename.setText("No file loaded.")
         
+        self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_legend.setGeometry(QtCore.QRect(350, 20, 200, 31))
+        self.pushButton_legend.setObjectName("pushButton_legend")
+        
+        self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_load.setGeometry(QtCore.QRect(800, 60, 175, 30))
+        self.pushButton_load.setObjectName("pushButton_load")
+
+        self.pushButton_plot = QtWidgets.QPushButton(self.json_tab)
+        self.pushButton_plot.setGeometry(QtCore.QRect(800, 100, 175, 30))
+        self.pushButton_plot.setObjectName("pushButton_plot")
+        
         self.pushButton_distro = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_distro.setGeometry(QtCore.QRect(700, 20, 89, 25))
+        self.pushButton_distro.setGeometry(QtCore.QRect(800, 140, 175, 30))
         self.pushButton_distro.setObjectName("pushButton_distro")
         
         self.pushButton_correlation = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_correlation.setGeometry(QtCore.QRect(800, 60, 150, 30)) 
+        self.pushButton_correlation.setGeometry(QtCore.QRect(800, 180, 175, 30)) 
         self.pushButton_correlation.setObjectName("pushButton_correlation")
         
-        self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
-        self.comboBox_sort_order.setGeometry(QtCore.QRect(240, 20, 100, 31)) 
-        self.comboBox_sort_order.addItems(["Descending", "Ascending"])
-        self.comboBox_sort_order.setObjectName("comboBox_sort_order")
-        
         self.pushButton_display_stats = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_display_stats.setGeometry(QtCore.QRect(800, 100, 150, 30)) 
+        self.pushButton_display_stats.setGeometry(QtCore.QRect(800, 220, 175, 30)) 
         self.pushButton_display_stats.setObjectName("pushButton_display_stats")
 
         # self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
@@ -133,7 +133,7 @@ class Ui_MainWindow(object):
         # self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
 
         # add json tab to the tab widget
-        self.tabWidget.addTab(self.json_tab, "JSON Viewer")
+        self.tabWidget.addTab(self.json_tab, "Data Viewer")
         
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
@@ -141,9 +141,9 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Scraper"))
-        self.pushButton_all.setText(_translate("MainWindow", "Scrape URL"))
-        self.pushButton_load.setText(_translate("MainWindow", "Load JSON"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Analysis"))
+        self.pushButton_all.setText(_translate("MainWindow", "Scrape Data"))
+        self.pushButton_load.setText(_translate("MainWindow", "Load Data"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
         self.pushButton_distro.setText(_translate("MainWindow", "Distribution"))
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
@@ -305,7 +305,7 @@ class Ui_MainWindow(object):
                
                 dialog = QtWidgets.QDialog()
                 dialog.setWindowTitle("Correlation Analysis")
-                dialog.resize(1000, 600)  
+                dialog.resize(1000, 700)  
 
                 figure = Figure()
                 canvas = FigureCanvas(figure)

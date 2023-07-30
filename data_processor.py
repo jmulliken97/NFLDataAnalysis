@@ -55,7 +55,19 @@ class DataProcessor:
 
     def calculate_score(self, player_data):
         player = player_data.copy()
-        stats_type = self.determine_stats_type(player_data)
+        
+        def determine_stats_type(stats):
+            stats_keys = stats.keys()
+            stat_types = [("passing", ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'Int', 'Int%', 'Lg TD', 'Lg', 'Sack', 'Loss', 'Rate']), 
+                        ("rushing", ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD']),
+                        ("receiving", ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC'])]
+
+            for stat_type, headers in stat_types:
+                if all(item in stats_keys for item in headers):
+                    return stat_type
+            return "unknown"
+
+        stats_type = determine_stats_type(player_data)
         weights = None
         if stats_type == "passing":
             weights = {
@@ -68,7 +80,10 @@ class DataProcessor:
                 "Loss": -0.05,
                 "ANY/A": 0.2,
             }
-
+            for key in ["Yds", "YPA", "Pct", "TD", "Int", "Rate", "Sack", "Loss", "Att"]:
+                if key in player:
+                    player[key] = float(player[key])
+                                
             if player.get("Int") != 0:
                 player["TD:INT Ratio"] = round(player["TD"] / player["Int"], 2)
             else:
@@ -77,31 +92,43 @@ class DataProcessor:
             player["ANY/A"] = round((player["Yds"] + 20 * player["TD"] - 45 * player["Int"] - player["Loss"]) / (player["Att"] + player["Sack"]), 2)
 
         elif stats_type == "rushing":
+            player["Y/A"] = player["Yds"] / player["Att"] if player["Att"] else 0
+            player["TD/A"] = player["TD"] / player["Att"] if player["Att"] else 0
+            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
+
             weights = {
-                "Rush Yds": 0.05,
-                "Att": 0.15,
-                "TD": 0.2,
-                "20+": 0.05,
-                "40+": 0.05,
-                "Lng": 0.2,
-                "Rush 1st": 0.05,
-                "Rush 1st%": 0.15,
-                "Rush FUM": -0.1,
-            }
-        
-        elif stats_type == "receiving":
-            weights = {
-                "Rec": 0.15,
                 "Yds": 0.15,
-                "TD": 0.2,
-                "20+": 0.05,
-                "40+": 0.05,
-                "LNG": 0.1,
-                "Rec 1st": 0.1,
-                "1st%": 0.1,
-                "Rec FUM": -0.1,
-                "Rec YAC/R": 0.05,
-                "Tgts": 0.05,
+                "Att": 0.15,
+                "TD": 0.15,
+                "Avg": 0.15,
+                "YPG": 0.1,
+                "Lg": 0.05,
+                "Y/A": 0.1,
+                "TD/A": 0.1,
+                "TD/G": 0.1
+            }
+
+        elif stats_type == "receiving":
+            player["Y/R"] = player["Yds"] / player["Rec"] if player["Rec"] else 0
+            player["TD/R"] = player["TD"] / player["Rec"] if player["Rec"] else 0
+            player["Y/Tgt"] = player["Yds"] / player["Tar"] if player["Tar"] else 0
+            player["Rec/Tgt"] = player["Rec"] / player["Tar"] if player["Tar"] else 0
+            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
+
+            weights = {
+                "Rec": 0.1,
+                "Yds": 0.1,
+                "TD": 0.15,
+                "Avg": 0.1,
+                "YPG": 0.1,
+                "Lg": 0.1,
+                "Tar": 0.05,
+                "YAC": 0.05,
+                "Y/R": 0.05,
+                "TD/R": 0.05,
+                "Y/Tgt": 0.05,
+                "Rec/Tgt": 0.05,
+                "TD/G": 0.1
             }
 
         if weights is None:
@@ -109,9 +136,10 @@ class DataProcessor:
 
         score = 0
         for stat, weight in weights.items():
-            score += player.get(stat, 0) * weight
+            if player.get(stat) is not None:
+                score += player.get(stat, 0) * weight
 
-        return score
+        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A")
 
     def flatten_json(self, data):
         flattened_data = []
@@ -121,7 +149,6 @@ class DataProcessor:
                     stats['Year'] = year  
                     stats['Player'] = player  
                     flattened_data.append(stats)
-                
         return pd.DataFrame(flattened_data)
     
     def load_json(self):
@@ -133,13 +160,32 @@ class DataProcessor:
                 data = self.clean_data(data)
                 for year, year_data in data.items():
                     df = pd.DataFrame.from_records(list(year_data.values()))
+                    scores = []
+                    td_int_ratios = []
+                    any_as = []
+                    efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
+                                        "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
                     for _, player in df.iterrows():
-                        player['Score'] = self.calculate_score(player)
+                        score, td_int_ratio, any_a = self.calculate_score(player)
+                        scores.append(score)
+                        if td_int_ratio is not None:
+                            td_int_ratios.append(round(td_int_ratio, 2))
+                        if any_a is not None:
+                            any_as.append(round(any_a, 2))
+                        for metric in efficiency_metrics.keys():
+                            if player.get(metric) is not None: 
+                                efficiency_metrics[metric].append(round(player.get(metric), 2))
+                    df['Score'] = scores
+                    if td_int_ratios:
+                        df['TD:INT Ratio'] = td_int_ratios
+                    if any_as:
+                        df['ANY/A'] = any_as
+                    for metric, values in efficiency_metrics.items():
+                        if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                            df[metric] = values
                     self.data_dict[year] = df
-
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)
-                
             columns = self.get_columns()
 
     def get_file_name(self):
