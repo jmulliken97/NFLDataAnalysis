@@ -90,6 +90,7 @@ class Ui_MainWindow(object):
         self.comboBox_sort_options = QtWidgets.QComboBox(self.json_tab)
         self.comboBox_sort_options.setGeometry(QtCore.QRect(100, 20, 100, 31))
         self.comboBox_sort_options.setObjectName("comboBox_sort_options")
+        self.comboBox_sort_options.setCurrentText("Yds")
         
         self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
         self.comboBox_sort_order.setGeometry(QtCore.QRect(215, 20, 100, 31)) 
@@ -217,7 +218,7 @@ class Ui_MainWindow(object):
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
-        index = self.comboBox_sort_options.findText("yds")
+        index = self.comboBox_sort_options.findText("Yds")
         if index >= 0:
             self.comboBox_sort_options.setCurrentIndex(index)
         sort_by = self.comboBox_sort_options.currentText()

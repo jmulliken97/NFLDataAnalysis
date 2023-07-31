@@ -138,7 +138,7 @@ class DataProcessor:
             if player.get(stat) is not None:
                 score += player.get(stat, 0) * weight
 
-        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A")
+        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player
 
     def flatten_json(self, data):
         flattened_data = []
@@ -166,15 +166,15 @@ class DataProcessor:
                     efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
                                         "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
                     for _, player in df.iterrows():
-                        score, td_int_ratio, any_a = self.calculate_score(player)
+                        score, td_int_ratio, any_a, updated_player = self.calculate_score(player)
                         scores.append(score)
                         if td_int_ratio is not None:
                             td_int_ratios.append(round(td_int_ratio, 2))
                         if any_a is not None:
                             any_as.append(round(any_a, 2))
                         for metric in efficiency_metrics.keys():
-                            if player.get(metric) is not None: 
-                                efficiency_metrics[metric].append(round(player.get(metric), 2))
+                            if updated_player.get(metric) is not None: 
+                                efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
                     df['Score'] = scores
                     if td_int_ratios:
                         df['TD:INT Ratio'] = td_int_ratios
