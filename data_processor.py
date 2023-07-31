@@ -40,10 +40,15 @@ class DataProcessor:
     def clean_player_name(cls, data):
         for year, players in data.items():
             for player, stats in players.items():
-                name_parts = stats['Player'].split('\xa0')
-                clean_name = name_parts[0]
-                if clean_name[-1].isalpha() and len(clean_name[-1]) == 1:
-                    clean_name = clean_name[:-1]
+                full_name = stats['Player']
+                split_name = full_name.split(' ')
+                first_name = split_name[0]
+                last_name = split_name[-1]
+                if last_name.endswith(f"{first_name[0]}."):
+                    last_name = last_name[:-2]
+                elif last_name.endswith(f"{first_name[0]}"):
+                    last_name = last_name[:-1]
+                clean_name = f'{first_name[0]}. {last_name}'
                 stats['Player'] = clean_name
         return data
 
