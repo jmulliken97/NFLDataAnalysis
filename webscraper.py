@@ -5,9 +5,6 @@ import os
 import pandas as pd
 import time
 
-def clean_player_name(name):
-    return name.split('\xa0')[0]
-
 def clean_lg_field(lg):
     if isinstance(lg, str) and 't' in lg:
         return int(lg.replace('t', '')), True
@@ -47,7 +44,6 @@ def scrape_all(stat_type, max_players, start_year, end_year):
 
             for _, row in df.iterrows():
                 name = row['Player']
-                name = clean_player_name(name)
 
                 stats = {}
                 for idx, stat_name in enumerate(headers):

@@ -40,14 +40,18 @@ class DataProcessor:
     def clean_player_name(cls, data):
         for year, players in data.items():
             for player, stats in players.items():
-                name_parts = stats['Player'].split('\xa0')
-                clean_name = name_parts[0]
-                if '.' in clean_name:
-                    clean_name = clean_name.split('.')[0]
+                full_name = stats['Player']
+                split_name = full_name.split(' ')
+                first_name = split_name[0]
+                last_name = split_name[-1]
+                if last_name.endswith(f"{first_name[0]}."):
+                    last_name = last_name[:-2]
+                elif last_name.endswith(f"{first_name[0]}"):
+                    last_name = last_name[:-1]
+                clean_name = f'{first_name[0]}. {last_name}'
                 stats['Player'] = clean_name
         return data
 
-    
     def clean_data(self, data):
         data = self.clean_player_name(data)
         data = self.clean_lg_field(data)
@@ -139,7 +143,7 @@ class DataProcessor:
             if player.get(stat) is not None:
                 score += player.get(stat, 0) * weight
 
-        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A")
+        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player
 
     def flatten_json(self, data):
         flattened_data = []
@@ -158,6 +162,7 @@ class DataProcessor:
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
                 data = self.clean_data(data)
+                self.data_dict = {}
                 for year, year_data in data.items():
                     df = pd.DataFrame.from_records(list(year_data.values()))
                     scores = []
@@ -166,15 +171,15 @@ class DataProcessor:
                     efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
                                         "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
                     for _, player in df.iterrows():
-                        score, td_int_ratio, any_a = self.calculate_score(player)
+                        score, td_int_ratio, any_a, updated_player = self.calculate_score(player)
                         scores.append(score)
                         if td_int_ratio is not None:
                             td_int_ratios.append(round(td_int_ratio, 2))
                         if any_a is not None:
                             any_as.append(round(any_a, 2))
                         for metric in efficiency_metrics.keys():
-                            if player.get(metric) is not None: 
-                                efficiency_metrics[metric].append(round(player.get(metric), 2))
+                            if updated_player.get(metric) is not None: 
+                                efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
                     df['Score'] = scores
                     if td_int_ratios:
                         df['TD:INT Ratio'] = td_int_ratios
@@ -251,6 +256,24 @@ class DataProcessor:
             return None
         stat_data = combined_df[stat]
         return stat_data
+    
+    def detect_outliers(self, year=None):
+        if year is None: 
+            combined_df = pd.concat(self.data_dict.values())
+        elif year in self.data_dict:
+            combined_df = self.data_dict[year]
+        else:
+            return None
+        numeric_df = combined_df.select_dtypes(include=[np.number])
+        Q1 = numeric_df.quantile(0.25)
+        Q3 = numeric_df.quantile(0.75)
+        IQR = Q3 - Q1
+        outlier_mask = (numeric_df < (Q1 - 1.5 * IQR)) | (numeric_df > (Q3 + 1.5 * IQR))
+        outliers_df = numeric_df[outlier_mask]
+
+        outliers_df = outliers_df.dropna(how='all')
+
+        return outliers_df
 
     def plot_player_stat(self, player_name, stat_column):
         df_selected = pd.DataFrame()
