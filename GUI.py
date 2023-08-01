@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
 import webscraper
+import penalties
 import os
 
 class Ui_MainWindow(object):
@@ -67,6 +68,10 @@ class Ui_MainWindow(object):
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
         self.pushButton_all.setGeometry(QtCore.QRect(800, 80, 175, 30))
         self.pushButton_all.setObjectName("pushButton_all")
+        
+        self.pushButton_penalties = QtWidgets.QPushButton(self.scraping_tab)
+        self.pushButton_penalties.setGeometry(QtCore.QRect(800, 120, 175, 30))
+        self.pushButton_penalties.setObjectName("pushButton_penalties")
 
         # add scraping tab to the tab widget
         self.tabWidget.addTab(self.scraping_tab, "Scraping")
@@ -151,7 +156,9 @@ class Ui_MainWindow(object):
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
         self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
         # self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
-        self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers")) 
+        self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers"))
+        self.pushButton_penalties.setText(QtCore.QCoreApplication.translate("MainWindow", "Scrape Penalties"))
+
 
         # Connect button to function
         self.pushButton_all.clicked.connect(self.scrape_all)
@@ -166,6 +173,7 @@ class Ui_MainWindow(object):
         # self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
+        self.pushButton_penalties.clicked.connect(self.scrape_penalties)
 
     def scrape_all(self):
         stat = []
@@ -197,6 +205,19 @@ class Ui_MainWindow(object):
             webscraper.scrape_all(stat_type, max_players, start_year, end_year)
 
         QMessageBox.information(self.centralwidget, "Success", f"Data for {', '.join(stat).capitalize()} for {start_year}-{end_year} scraped successfully.")
+        
+    def scrape_penalties(self):
+        start_year = int(self.comboBox_start_year.currentText())
+        end_year = int(self.comboBox_end_year.currentText())
+        if start_year < 2006:
+            QMessageBox.warning(self.centralwidget, "Warning", "Start year should not be less than 2006.")
+            return
+        if start_year > end_year:
+            QMessageBox.warning(self.centralwidget, "Warning", "Start year should be less than or equal to end year.")
+            return
+        penalties.scrape_all(start_year, end_year)  # Call the penalties scraping function
+        QMessageBox.information(self.centralwidget, "Success", f"Penalty data for {start_year}-{end_year} scraped successfully.")
+
 
     def load_json_file(self):
         self.data_processor.load_json()
