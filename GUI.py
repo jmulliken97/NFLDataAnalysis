@@ -64,6 +64,16 @@ class Ui_MainWindow(object):
         self.checkBox_receiving.setGeometry(QtCore.QRect(50, 120, 200, 31))
         self.checkBox_receiving.setText("Receiving")
         self.checkBox_receiving.setObjectName("checkBox_receiving")
+        
+        self.checkBox_defense = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_defense.setGeometry(QtCore.QRect(50, 160, 200, 31))
+        self.checkBox_defense.setText("Defense")
+        self.checkBox_defense.setObjectName("checkBox_defense")
+        
+        self.checkBox_kicking = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_kicking.setGeometry(QtCore.QRect(50, 200, 200, 31))
+        self.checkBox_kicking.setText("Kicking")
+        self.checkBox_kicking.setObjectName("checkBox_kicking")
 
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
         self.pushButton_all.setGeometry(QtCore.QRect(800, 80, 175, 30))
@@ -183,6 +193,10 @@ class Ui_MainWindow(object):
             stat.append("rushing")
         if self.checkBox_receiving.isChecked():
             stat.append("receiving")
+        if self.checkBox_defense.isChecked():
+            stat.append("defense")
+        if self.checkBox_kicking.isChecked():
+            stat.append("kicking")
         if not stat:
             QMessageBox.warning(self.centralwidget, "Warning", "No stat type selected.")
             return
@@ -200,6 +214,10 @@ class Ui_MainWindow(object):
                 max_players = 50
             elif stat_type == 'receiving':
                 max_players = 100
+            elif stat_type == 'defense':
+                max_players = 150
+            elif stat_type == 'kicking':
+                max_players = 35
             else:
                 raise ValueError(f"Unknown stat type: {stat_type}")
             webscraper.scrape_all(stat_type, max_players, start_year, end_year)

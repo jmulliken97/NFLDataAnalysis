@@ -15,7 +15,9 @@ def scrape_all(stat_type, max_players, start_year, end_year):
     headers_dict = {
         "passing": ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%T%', 'Int', 'Int%I%', 'Lg', 'Sack', 'Loss', 'Rate'],
         "rushing": ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
-        "receiving": ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        "receiving": ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
+        "defense": ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL'], 
+        "kicking": ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg', 'Pts']
     }
 
     headers = headers_dict[stat_type]
@@ -36,9 +38,14 @@ def scrape_all(stat_type, max_players, start_year, end_year):
 
             table = soup.find_all('table')[0] 
             df = pd.read_html(str(table))[0]
+            
+            if stat_type == 'defense':
+            # Drop the top level of the MultiIndex for defense stats
+                df.columns = df.columns.droplevel(0)
 
-            df.columns = df.columns.str.replace('Int%I%', 'Int%')
-            df.columns = df.columns.str.replace('TD%T%', 'TD%')
+            if stat_type == 'passing':
+                df.columns = df.columns.str.replace('Int%I%', 'Int%')
+                df.columns = df.columns.str.replace('TD%T%', 'TD%')
 
             headers = df.columns.tolist()
 

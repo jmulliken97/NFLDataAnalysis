@@ -21,9 +21,7 @@ def scrape_year_data(year_url, request_headers):
     # Flatten multi-level column headers if they exist
     df.columns = [' '.join(col).strip() for col in df.columns.values]
     df = df.rename(columns={"Unnamed: 0_level_0 Team": "Team"})
-    df["Team"] = df["Team"].apply(lambda x: x.rsplit(' ', 1)[0])
 
-    # Clean the data
     for column in df.columns:
         df[column] = df[column].apply(clean_data)
     
