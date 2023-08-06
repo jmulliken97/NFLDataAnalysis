@@ -26,36 +26,6 @@ class DataProcessor:
                 return stat_type
 
         return "unknown"
-    
-    @classmethod
-    def clean_lg_field(cls, data):
-        for year, players in data.items():
-            for player, stats in players.items():
-                if 'Lg' in stats and isinstance(stats['Lg'], str):
-                    stats['Lg TD'] = 't' in stats['Lg']
-                    stats['Lg'] = int(stats['Lg'].replace('t', ''))
-        return data
-    
-    @classmethod
-    def clean_player_name(cls, data):
-        for year, players in data.items():
-            for player, stats in players.items():
-                full_name = stats['Player']
-                split_name = full_name.split(' ')
-                first_name = split_name[0]
-                last_name = split_name[-1]
-                if last_name.endswith(f"{first_name[0]}."):
-                    last_name = last_name[:-2]
-                elif last_name.endswith(f"{first_name[0]}"):
-                    last_name = last_name[:-1]
-                clean_name = f'{first_name[0]}. {last_name}'
-                stats['Player'] = clean_name
-        return data
-
-    def clean_data(self, data):
-        data = self.clean_player_name(data)
-        data = self.clean_lg_field(data)
-        return data
 
     def calculate_score(self, player_data):
         player = player_data.copy()
@@ -64,7 +34,9 @@ class DataProcessor:
             stats_keys = stats.keys()
             stat_types = [("passing", ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'Int', 'Int%', 'Lg TD', 'Lg', 'Sack', 'Loss', 'Rate']), 
                         ("rushing", ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD']),
-                        ("receiving", ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC'])]
+                        ("receiving", ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC']),
+                        ("defense", ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']),
+                        ("kicking", ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts'])]
 
             for stat_type, headers in stat_types:
                 if all(item in stats_keys for item in headers):
@@ -73,6 +45,7 @@ class DataProcessor:
 
         stats_type = determine_stats_type(player_data)
         weights = None
+
         if stats_type == "passing":
             weights = {
                 "Yds": 0.05,
@@ -134,16 +107,59 @@ class DataProcessor:
                 "Rec/Tgt": 0.05,
                 "TD/G": 0.1
             }
+            
+        elif stats_type == "defense":
+            weights = {
+                "Gms": 0.05,
+                "Int": 0.15,
+                "Yds": 0.10,
+                "Avg": 0.10,
+                "Lg TD": 0.10,
+                "Lg": 0.05,
+                "TD": 0.10,
+                "Solo": 0.10,
+                "Ast": 0.05,
+                "Tot": 0.10,
+                "Sack": 0.10,
+                "YdsL": 0.10
+            }
+            for key in ["Gms", "Int", "Yds", "Avg", "TD", "Solo", "Ast", "Tot", "Sack", "YdsL"]:
+                if key in player:
+                    player[key] = float(player[key])
+                    
+        elif stats_type == "kicking":
+            weights = {
+                "Gms": 0.05,
+                "PAT": 0.15,
+                "FG": 0.25,
+                "0-19": 0.05,
+                "20-29": 0.05,
+                "30-39": 0.05,
+                "40-49": 0.05,
+                "50+": 0.05,
+                "Lg": 0.10,
+                "Pts": 0.30
+            }
+            for key in ["Gms", "Lg", "Pts"]:
+                if key in player:
+                    player[key] = float(player[key])
+            for key in ["PAT", "FG", "0-19", "20-29", "30-39", "40-49", "50+"]:
+                if key in player:
+                    successes, attempts = map(int, player[key].split('/'))
+                    player[key] = successes / attempts if attempts != 0 else 0
 
         if weights is None:
-            return None
+            return None, None, None, {}, "unknown"
 
         score = 0
         for stat, weight in weights.items():
             if player.get(stat) is not None:
                 score += player.get(stat, 0) * weight
 
-        return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player
+        if stats_type == "passing":
+            return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player, stats_type
+        elif stats_type == "rushing" or stats_type == "receiving" or stats_type == "defense" or stats_type == "kicking":
+            return round(score, 2), None, None, player, stats_type
 
     def flatten_json(self, data):
         flattened_data = []
@@ -161,7 +177,6 @@ class DataProcessor:
             self.file_name = file_name[0]
             with open(self.file_name, 'r') as json_file:
                 data = json.load(json_file)
-                data = self.clean_data(data)
                 self.data_dict = {}
                 for year, year_data in data.items():
                     df = pd.DataFrame.from_records(list(year_data.values()))
@@ -171,12 +186,13 @@ class DataProcessor:
                     efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
                                         "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
                     for _, player in df.iterrows():
-                        score, td_int_ratio, any_a, updated_player = self.calculate_score(player)
+                        score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
                         scores.append(score)
-                        if td_int_ratio is not None:
-                            td_int_ratios.append(round(td_int_ratio, 2))
-                        if any_a is not None:
-                            any_as.append(round(any_a, 2))
+                        if stats_type == "passing":
+                            if td_int_ratio is not None:
+                                td_int_ratios.append(round(td_int_ratio, 2))
+                            if any_a is not None:
+                                any_as.append(round(any_a, 2))
                         for metric in efficiency_metrics.keys():
                             if updated_player.get(metric) is not None: 
                                 efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
