@@ -29,10 +29,6 @@ class Ui_MainWindow(object):
         self.scraping_tab.setObjectName("scraping_tab")
         
         # add widgets to the scraping tab
-        self.label = QtWidgets.QLabel(self.scraping_tab)
-        self.label.setGeometry(QtCore.QRect(40, 40, 141, 31))
-        self.label.setObjectName("label")
-        
         self.comboBox_start_year = QtWidgets.QComboBox(self.scraping_tab)
         self.comboBox_start_year.setGeometry(QtCore.QRect(300, 80, 100, 31))
         self.comboBox_start_year.addItems([str(year) for year in range(1970, 2023)])  
@@ -184,6 +180,24 @@ class Ui_MainWindow(object):
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
+        self.pushButton_load.clicked.connect(self.load_from_db)
+        
+    def load_from_db (self):
+        self.data_processor.load_data_from_db()
+        self.comboBox_year.clear()
+        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
+
+        year = self.comboBox_year.currentText()
+        data_df = self.data_processor.data_dict[year]
+
+        self.tableWidget.setRowCount(len(data_df))
+        self.tableWidget.setColumnCount(len(data_df.columns))
+        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
+        for i, (index, row) in enumerate(data_df.iterrows()):
+            for j, value in enumerate(row):
+                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
+        self.comboBox_sort_column.clear()
+        self.comboBox_sort_options.addItems(self.data_processor.get_columns())
 
     def scrape_all(self):
         stat = []
@@ -235,25 +249,6 @@ class Ui_MainWindow(object):
             return
         penalties.scrape_all(start_year, end_year)  # Call the penalties scraping function
         QMessageBox.information(self.centralwidget, "Success", f"Penalty data for {start_year}-{end_year} scraped successfully.")
-
-
-    def load_json_file(self):
-        self.data_processor.load_json()
-        self.comboBox_year.clear()
-        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
-        self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")
-
-        year = self.comboBox_year.currentText()
-        data_df = self.data_processor.data_dict[year]
-
-        self.tableWidget.setRowCount(len(data_df))
-        self.tableWidget.setColumnCount(len(data_df.columns))
-        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-        for i, (index, row) in enumerate(data_df.iterrows()):
-            for j, value in enumerate(row):
-                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
-        self.comboBox_sort_column.clear()
-        self.comboBox_sort_options.addItems(self.data_processor.get_columns())
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()

@@ -1,17 +1,15 @@
 import sqlite3
 from bs4 import BeautifulSoup
 import requests
-import json
-import os
 import pandas as pd
 import time
 import concurrent.futures
 
 headers_dict = {
-        "passing": ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%T%', 'Int', 'Int%I%', 'Lg', 'Sack', 'Loss', 'Rate'],
-        "rushing": ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
-        "receiving": ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
-        "defense": ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL'], 
+        "passing": ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'Int', 'Int%', 'Lg', 'Sack', 'Loss', 'Rate', 'Lg TD'],
+        "rushing": ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'YPG', 'Lg', 'Lg TD', 'TD', 'FD'],
+        "receiving": ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg', 'TD', 'FD', 'Tar', 'YAC'],
+        "defense": ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL'],
         "kicking": ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg', 'Pts']
     }
 
@@ -98,33 +96,32 @@ def initialize_db():
     cursor = conn.cursor()
     tables = {
         "passing": '''CREATE TABLE IF NOT EXISTS passing
-                      (Year INT, Player TEXT, Team TEXT, Gms INT, Att INT, Cmp INT, Pct REAL, Yds INT,
-                       YPA REAL, TD INT, TD_percentage REAL, Int INT, Int_percentage REAL, Lg INT,
-                       Sack INT, Loss INT, Rate REAL, Lg_TD BOOLEAN)''',
+                    (Year INT, Player TEXT, Team TEXT, Gms INT, Att INT, Cmp INT, Pct REAL, Yds INT,
+                    "YPA" REAL, TD INT, "TD%" REAL, "Int" INT, "Int%" REAL, Lg INT,
+                    Sack INT, Loss INT, Rate REAL, "Lg TD" BOOLEAN)''',
         "rushing": '''CREATE TABLE IF NOT EXISTS rushing
-                      (Year INT, Player TEXT, Team TEXT, Gms INT, Att INT, Yds INT, Avg REAL, TD INT, Lg INT,
-                       1st INT, 1st_percentage REAL, 20_plus INT, 40_plus INT, FUM INT)''',
+                    (Year INT, Player TEXT, Team TEXT, Gms INT, Att INT, Yds INT, Avg REAL, YPG REAL, Lg INT,
+                    "Lg TD" BOOLEAN, TD INT, FD INT)''',
         "receiving": '''CREATE TABLE IF NOT EXISTS receiving
-                        (Year INT, Player TEXT, Team TEXT, Gms INT, Rec INT, Yds INT, Avg REAL, TD INT, Lg INT,
-                         1st INT, 1st_percentage REAL, 20_plus INT, 40_plus INT, FUM INT)''',
+                        (Year INT, Player TEXT, Team TEXT, Gms INT, Rec INT, Yds INT, Avg REAL, YPG REAL, Lg INT,
+                        TD INT, FD INT, Tar INT, YAC INT)''',
         "defense": '''CREATE TABLE IF NOT EXISTS defense
-                      (Year INT, Player TEXT, Team TEXT, Gms INT, Int INT, Yds INT, Avg REAL, Lg INT, TD INT,
-                       Solo INT, Ast INT, Tot INT, Sack INT, YdsL INT)''',
+                    (Year INT, Player TEXT, Team TEXT, Gms INT, "Int" INT, Yds INT, Avg REAL, Lg INT, TD INT,
+                    Solo INT, Ast INT, Tot INT, Sack INT, YdsL INT)''',
         "kicking": '''CREATE TABLE IF NOT EXISTS kicking
-                      (Year INT, Player TEXT, Team TEXT, Gms INT, PAT INT, FG INT, 0_to_19 INT, 20_to_29 INT,
-                       30_to_39 INT, 40_to_49 INT, 50_plus INT, Lg INT, Pts INT)'''
+              (Year INT, Player TEXT, Team TEXT, Gms INT, PAT INT, FG INT, "0-19" INT, "20-29" INT,
+               "30-39" INT, "40-49" INT, "50+" INT, Lg INT, Pts INT)'''
     }
-    
+
     for table in tables.values():
         cursor.execute(table)
     conn.commit()
     return conn, cursor
 
-
 def insert_data_to_db(cursor, year, stat_type, data, headers):
-    insert_query = f"INSERT INTO {stat_type} (Year, " + ", ".join(headers) + ") VALUES (" + ", ".join(["?"] * (len(headers) + 1)) + ")"
+    insert_query = f"INSERT INTO {stat_type} (Year, Player, " + ", ".join([f'"{header}"' for header in headers]) + ") VALUES (" + ", ".join(["?"] * (len(headers) + 2)) + ")"
     for player, stats in data.items():
-        stats_list = [year, player] + [stats[key] for key in headers]
+        stats_list = [year, player] + [stats.get(key, None) for key in headers_dict[stat_type]]
         cursor.execute(insert_query, stats_list)
 
 def scrape_all(stat_type, max_players, start_year, end_year):

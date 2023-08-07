@@ -4,6 +4,7 @@ import seaborn as sns
 from PyQt5 import QtWidgets
 import json
 from collections.abc import MutableMapping
+import sqlite3
 import numpy as np
 
 class DataProcessor:
@@ -14,12 +15,17 @@ class DataProcessor:
         self.passing_headers = ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
         self.rushing_headers = ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
         self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        self.defense_headers = ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']
+        self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']
+
         
     def determine_stats_type(self, stats):
         stats_keys = stats.keys()
         stat_types = [("passing", self.passing_headers), 
                       ("rushing", self.rushing_headers), 
-                      ("receiving", self.receiving_headers)]
+                      ("receiving", self.receiving_headers),
+                      ("kicking", self.kicking_headers),
+                      ("defense", self.defense_headers)]
 
         for stat_type, headers in stat_types:
             if all(item in stats_keys for item in headers):
@@ -208,6 +214,62 @@ class DataProcessor:
             with open(self.file_name, 'w') as json_file:
                 json.dump(data, json_file)
             columns = self.get_columns()
+            
+    def load_data_from_db(self):
+        conn = sqlite3.connect("stats.db")
+        cursor = conn.cursor()
+
+        self.data_dict = {}
+
+        headers_dict = {
+            "passing": self.passing_headers,
+            "rushing": self.rushing_headers,
+            "receiving": self.receiving_headers,
+            "defense": self.defense_headers,
+            "kicking": self.kicking_headers
+        }    
+        # Loop through the stat types (e.g., "passing", "rushing", etc.)
+        for stats_type, headers in headers_dict.items():
+            query = f"SELECT * FROM {stats_type}"
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            # Convert the rows to a DataFrame
+            df = pd.DataFrame(rows, columns=['Year'] + headers)
+
+            scores = []
+            td_int_ratios = []
+            any_as = []
+            efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
+                                "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
+
+            for _, player in df.iterrows():
+                score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
+                scores.append(score)
+                if stats_type == "passing":
+                    if td_int_ratio is not None:
+                        td_int_ratios.append(round(td_int_ratio, 2))
+                    if any_a is not None:
+                        any_as.append(round(any_a, 2))
+                for metric in efficiency_metrics.keys():
+                    if updated_player.get(metric) is not None: 
+                        efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
+
+            df['Score'] = scores
+            if td_int_ratios:
+                df['TD:INT Ratio'] = td_int_ratios
+            if any_as:
+                df['ANY/A'] = any_as
+            for metric, values in efficiency_metrics.items():
+                if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                    df[metric] = values
+
+            # Group data by year
+            for year, year_data in df.groupby('Year'):
+                self.data_dict[year] = year_data
+
+        conn.close()
+        columns = self.get_columns()
 
     def get_file_name(self):
         return self.file_name if hasattr(self, 'file_name') else 'No file loaded.'
