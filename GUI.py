@@ -151,6 +151,13 @@ class Ui_MainWindow(object):
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "Data Viewer")
         
+        # Prediction Tab
+        self.predict_tab = QtWidgets.QWidget()
+        self.predict_tab.setObjectName("predict_tab")
+        
+        # add predict tab to the tab widget
+        self.tabWidget.addTab(self.predict_tab, "Predictions")
+        
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
