@@ -2,12 +2,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PyQt5 import QtWidgets
-import json
 from collections.abc import MutableMapping
 import numpy as np
+from data_loader import DataLoader
 
 class DataProcessor:
-    def __init__(self, text_edit_widget):
+    def __init__(self, bucket_name, text_edit_widget=None):
+        self.data_loader = DataLoader(bucket_name)
+        self.data_dict = self.data_loader.load_data_from_s3()
         self.data_dict = {}
         self.textEdit = text_edit_widget
         self.league = None
@@ -171,43 +173,45 @@ class DataProcessor:
                     flattened_data.append(stats)
         return pd.DataFrame(flattened_data)
     
-    def load_json(self):
-        file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
-        if file_name[0]:
-            self.file_name = file_name[0]
-            with open(self.file_name, 'r') as json_file:
-                data = json.load(json_file)
-                self.data_dict = {}
-                for year, year_data in data.items():
-                    df = pd.DataFrame.from_records(list(year_data.values()))
-                    scores = []
-                    td_int_ratios = []
-                    any_as = []
-                    efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
-                                        "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
-                    for _, player in df.iterrows():
-                        score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
-                        scores.append(score)
-                        if stats_type == "passing":
-                            if td_int_ratio is not None:
-                                td_int_ratios.append(round(td_int_ratio, 2))
-                            if any_a is not None:
-                                any_as.append(round(any_a, 2))
-                        for metric in efficiency_metrics.keys():
-                            if updated_player.get(metric) is not None: 
-                                efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
-                    df['Score'] = scores
-                    if td_int_ratios:
-                        df['TD:INT Ratio'] = td_int_ratios
-                    if any_as:
-                        df['ANY/A'] = any_as
-                    for metric, values in efficiency_metrics.items():
-                        if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
-                            df[metric] = values
-                    self.data_dict[year] = df
-            with open(self.file_name, 'w') as json_file:
-                json.dump(data, json_file)
-            columns = self.get_columns()
+    def get_file_names(self):
+        # List all files in the bucket
+        files = self.s3_client.list_objects(Bucket=self.bucket_name)['Contents']
+        file_names = [file['Key'] for file in files if file['Key'].endswith('.json')]
+        return [name.replace("stats.json", "") for name in file_names]
+    
+    def process_data(self, data):
+        self.data_dict = {}
+        for year, year_data in data.items():
+            df = pd.DataFrame.from_records(list(year_data.values()))
+            scores = []
+            td_int_ratios = []
+            any_as = []
+            efficiency_metrics = {
+                "Y/A": [], "TD/A": [], "TD/G": [], 
+                "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
+            }
+
+            for _, player in df.iterrows():
+                score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
+                scores.append(score)
+                if stats_type == "passing":
+                    if td_int_ratio is not None:
+                        td_int_ratios.append(round(td_int_ratio, 2))
+                    if any_a is not None:
+                        any_as.append(round(any_a, 2))
+                for metric in efficiency_metrics.keys():
+                    if updated_player.get(metric) is not None: 
+                        efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
+
+            df['Score'] = scores
+            if td_int_ratios:
+                df['TD:INT Ratio'] = td_int_ratios
+            if any_as:
+                df['ANY/A'] = any_as
+            for metric, values in efficiency_metrics.items():
+                if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                    df[metric] = values
+            self.data_dict[year] = df
 
     def get_file_name(self):
         return self.file_name if hasattr(self, 'file_name') else 'No file loaded.'

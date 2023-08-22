@@ -6,12 +6,15 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
 import webscraper
 import penalties
-import os
+import json
+import pandas as pd
+
+bucket_name = "statsbucketpython"
 
 class Ui_MainWindow(object):
     def __init__(self):
         self.textEdit = QtWidgets.QTextEdit()  
-        self.data_processor = DataProcessor(self.textEdit)
+        self.data_processor = DataProcessor(bucket_name, self.textEdit)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         
@@ -179,7 +182,7 @@ class Ui_MainWindow(object):
 
         # Connect button to function
         self.pushButton_all.clicked.connect(self.scrape_all)
-        self.pushButton_load.clicked.connect(self.load_json_file)
+        self.pushButton_load.clicked.connect(self.load_data_from_s3)
         self.pushButton_plot.clicked.connect(self.plot_stats)
         self.pushButton_distro.clicked.connect(self.distribution)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
@@ -244,23 +247,22 @@ class Ui_MainWindow(object):
         QMessageBox.information(self.centralwidget, "Success", f"Penalty data for {start_year}-{end_year} scraped successfully.")
 
 
-    def load_json_file(self):
-        self.data_processor.load_json()
-        self.comboBox_year.clear()
-        self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
-        self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")
+    def load_data_from_s3(self):
+        # List all files in the bucket
+        files = self.s3_client.list_objects(Bucket=self.bucket_name)['Contents']
+        
+        for file in files:
+            object_key = file['Key']
+            if object_key.endswith('.json'):
+                # Fetch file content
+                s3_file_content = self.s3_client.get_object(Bucket=self.bucket_name, Key=object_key)['Body'].read().decode('utf-8')
+                data = json.loads(s3_file_content)
+                
+                for year, year_data in data.items():
+                    df = pd.DataFrame.from_dict(year_data, orient='index')
+                    self.data_dict[year] = df
 
-        year = self.comboBox_year.currentText()
-        data_df = self.data_processor.data_dict[year]
-
-        self.tableWidget.setRowCount(len(data_df))
-        self.tableWidget.setColumnCount(len(data_df.columns))
-        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-        for i, (index, row) in enumerate(data_df.iterrows()):
-            for j, value in enumerate(row):
-                self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
-        self.comboBox_sort_column.clear()
-        self.comboBox_sort_options.addItems(self.data_processor.get_columns())
+        return self.data_dict
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
