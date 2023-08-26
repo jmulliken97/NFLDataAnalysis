@@ -115,12 +115,16 @@ class Ui_MainWindow(object):
         self.comboBox_sort_order.addItems(["Descending", "Ascending"])
         self.comboBox_sort_order.setObjectName("comboBox_sort_order")
         
+        self.comboBox_selector = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_selector.setGeometry(QtCore.QRect(350, 20, 100, 31))
+        self.comboBox_selector.setObjectName("comboBox_selector")
+        
         self.label_filename = QtWidgets.QLabel(self.centralwidget)
         self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
         self.label_filename.setText("No file loaded.")
         
         self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_legend.setGeometry(QtCore.QRect(350, 20, 200, 31))
+        self.pushButton_legend.setGeometry(QtCore.QRect(600, 20, 200, 31))
         self.pushButton_legend.setObjectName("pushButton_legend")
         
         self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
@@ -194,6 +198,7 @@ class Ui_MainWindow(object):
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
+        self.comboBox_selector.currentIndexChanged.connect(self.display_selected_file_data)
 
     def scrape_all(self):
         stat = []
@@ -246,23 +251,46 @@ class Ui_MainWindow(object):
         penalties.scrape_all(start_year, end_year)  # Call the penalties scraping function
         QMessageBox.information(self.centralwidget, "Success", f"Penalty data for {start_year}-{end_year} scraped successfully.")
 
-
     def load_data_from_s3(self):
-        # List all files in the bucket
-        files = self.s3_client.list_objects(Bucket=self.bucket_name)['Contents']
+        files = self.data_processor.data_loader.s3_client.list_objects(Bucket=self.data_processor.data_loader.bucket_name)['Contents']
+        
+        file_names = []
         
         for file in files:
             object_key = file['Key']
             if object_key.endswith('.json'):
-                # Fetch file content
-                s3_file_content = self.s3_client.get_object(Bucket=self.bucket_name, Key=object_key)['Body'].read().decode('utf-8')
+                s3_file_content = self.data_processor.data_loader.s3_client.get_object(Bucket=self.data_processor.data_loader.bucket_name, Key=object_key)['Body'].read().decode('utf-8')
                 data = json.loads(s3_file_content)
+                stat_type = object_key.split(".")[0]
+                file_names.append(stat_type)
                 
+                processed_data = {}  # This will store the processed data for each year
                 for year, year_data in data.items():
-                    df = pd.DataFrame.from_dict(year_data, orient='index')
-                    self.data_dict[year] = df
+                    print(year_data)
+                    self.data_processor.process_data({year: year_data})
+                    processed_data[year] = self.data_processor.data_dict[year]
+                    
+                self.data_processor.data_dict[stat_type] = processed_data
 
-        return self.data_dict
+        self.comboBox_selector.clear()
+        self.comboBox_selector.addItems(file_names)
+
+    def display_data_in_table(self, data):
+        data = data.T.reset_index(drop=True)
+        data = data.reset_index(drop=True)
+        self.tableWidget.clearContents()
+        self.tableWidget.setRowCount(data.shape[0])
+        self.tableWidget.setColumnCount(data.shape[1])
+        self.tableWidget.setHorizontalHeaderLabels(data.columns)
+        for row_idx, row_data in data.iterrows():
+            for col_idx, cell_value in enumerate(row_data):
+                self.tableWidget.setItem(int(row_idx), col_idx, QTableWidgetItem(str(cell_value)))
+
+    def display_selected_file_data(self):
+        selected_stat_type = self.comboBox_selector.currentText()
+        if selected_stat_type in self.data_processor.data_dict:
+            selected_year_data = self.data_processor.data_dict[selected_stat_type].get("2022", pd.DataFrame())
+            self.display_data_in_table(selected_year_data) 
 
     def sort_dataframe(self):
         year = self.comboBox_year.currentText()
@@ -276,9 +304,10 @@ class Ui_MainWindow(object):
         
     def update_table(self):
         self.tableWidget.clearContents()
+        selected_stat_type = self.comboBox_selector.currentText()
         year = self.comboBox_year.currentText()
-        if year in self.data_processor.data_dict:
-            data_df = self.data_processor.data_dict[year]
+        if selected_stat_type in self.data_processor.data_dict and year in self.data_processor.data_dict[selected_stat_type]:
+            data_df = self.data_processor.data_dict[selected_stat_type][year]
             self.tableWidget.setRowCount(len(data_df))
             self.tableWidget.setColumnCount(len(data_df.columns))
             self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
@@ -286,13 +315,12 @@ class Ui_MainWindow(object):
                 for j, cell in enumerate(row):
                     self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
         else:
-            print(f"No data for year {year}")
+            print(f"No data for year {year} and stat type {selected_stat_type}")
 
     def show_legend(self):
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Legend")
         dialog.resize(400, 300)
-
         text_edit = QtWidgets.QTextEdit(dialog)
         text_edit.setGeometry(10, 10, 380, 280)
         text_edit.setReadOnly(True)
