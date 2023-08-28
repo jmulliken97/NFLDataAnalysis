@@ -6,12 +6,14 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
 import webscraper
 import penalties
-import os
+import pandas as pd
+
+bucket_name = "statsbucketpython"
 
 class Ui_MainWindow(object):
     def __init__(self):
         self.textEdit = QtWidgets.QTextEdit()  
-        self.data_processor = DataProcessor(self.textEdit)
+        self.data_processor = DataProcessor(bucket_name)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         
@@ -89,10 +91,6 @@ class Ui_MainWindow(object):
         # JSON Viewer
         self.json_tab = QtWidgets.QWidget()
         self.json_tab.setObjectName("json_tab")
-
-        self.comboBox_sort_column = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_sort_column.setGeometry(QtCore.QRect(190, 100, 141, 31))
-        self.comboBox_sort_column.setObjectName("comboBox_sort_column")
         
         self.tableWidget = QtWidgets.QTableWidget(self.json_tab)
         self.tableWidget.setGeometry(QtCore.QRect(10, 60, 765, 690))
@@ -101,23 +99,18 @@ class Ui_MainWindow(object):
         self.comboBox_year = QtWidgets.QComboBox(self.json_tab)
         self.comboBox_year.setGeometry(QtCore.QRect(10, 20, 75, 31))
         self.comboBox_year.setObjectName("comboBox_year")
-
-        self.comboBox_sort_options = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_sort_options.setGeometry(QtCore.QRect(100, 20, 100, 31))
-        self.comboBox_sort_options.setObjectName("comboBox_sort_options")
-        self.comboBox_sort_options.setCurrentText("Yds")
         
-        self.comboBox_sort_order = QtWidgets.QComboBox(self.json_tab)  
-        self.comboBox_sort_order.setGeometry(QtCore.QRect(215, 20, 100, 31)) 
-        self.comboBox_sort_order.addItems(["Descending", "Ascending"])
-        self.comboBox_sort_order.setObjectName("comboBox_sort_order")
+        self.comboBox_selector = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_selector.setGeometry(QtCore.QRect(95, 20, 100, 31))
+        self.comboBox_selector.addItems(['Passing', 'Rushing', 'Receiving', 'Defense', 'Kicking'])
+        self.comboBox_selector.setObjectName("comboBox_selector")
         
-        self.label_filename = QtWidgets.QLabel(self.centralwidget)
-        self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
-        self.label_filename.setText("No file loaded.")
+        self.comboBox_sort = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_sort.setGeometry(QtCore.QRect(205, 20, 75, 31))
+        self.comboBox_sort.setObjectName("comboBox_sort")
         
         self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_legend.setGeometry(QtCore.QRect(350, 20, 200, 31))
+        self.pushButton_legend.setGeometry(QtCore.QRect(600, 20, 200, 31))
         self.pushButton_legend.setObjectName("pushButton_legend")
         
         self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
@@ -151,6 +144,13 @@ class Ui_MainWindow(object):
         # add json tab to the tab widget
         self.tabWidget.addTab(self.json_tab, "Data Viewer")
         
+        # Prediction Tab
+        self.predict_tab = QtWidgets.QWidget()
+        self.predict_tab.setObjectName("predict_tab")
+        
+        # add predict tab to the tab widget
+        self.tabWidget.addTab(self.predict_tab, "Predictions")
+        
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -172,18 +172,17 @@ class Ui_MainWindow(object):
 
         # Connect button to function
         self.pushButton_all.clicked.connect(self.scrape_all)
-        self.pushButton_load.clicked.connect(self.load_json_file)
+        self.pushButton_load.clicked.connect(self.load_data_from_s3)
         self.pushButton_plot.clicked.connect(self.plot_stats)
         self.pushButton_distro.clicked.connect(self.distribution)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
-        self.comboBox_sort_column.currentIndexChanged.connect(self.sort_dataframe)
-        self.comboBox_sort_order.currentIndexChanged.connect(self.sort_dataframe)
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
         self.pushButton_display_stats.clicked.connect(self.display_stats)
         # self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
+        self.comboBox_sort.currentIndexChanged.connect(self.update_table)
 
     def scrape_all(self):
         stat = []
@@ -233,57 +232,61 @@ class Ui_MainWindow(object):
         if start_year > end_year:
             QMessageBox.warning(self.centralwidget, "Warning", "Start year should be less than or equal to end year.")
             return
-        penalties.scrape_all(start_year, end_year)  # Call the penalties scraping function
+        penalties.scrape_all(start_year, end_year) 
         QMessageBox.information(self.centralwidget, "Success", f"Penalty data for {start_year}-{end_year} scraped successfully.")
 
-
-    def load_json_file(self):
-        self.data_processor.load_json()
+    def load_data_from_s3(self):
+        stat_type = self.comboBox_selector.currentText()
+        self.data_processor.load_and_process_data(stat_type)
         self.comboBox_year.clear()
         self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
-        self.label_filename.setText(f"Loaded file: {os.path.basename(self.data_processor.get_file_name())}")
-
+        if "2022" in self.data_processor.data_dict:
+            self.comboBox_year.setCurrentText("2022")
+            
         year = self.comboBox_year.currentText()
         data_df = self.data_processor.data_dict[year]
+        self.comboBox_sort.clear()
 
+        sort_columns = [col for col in data_df.columns if col not in ["Player", "Team", "Year"]]
+        self.comboBox_sort.addItems(sort_columns)
+        
+        index_of_yds = self.comboBox_sort.findText('Yds')
+        if index_of_yds != -1:
+            self.comboBox_sort.setCurrentIndex(index_of_yds)
+        self.update_table()
         self.tableWidget.setRowCount(len(data_df))
-        self.tableWidget.setColumnCount(len(data_df.columns))
-        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-        for i, (index, row) in enumerate(data_df.iterrows()):
+        
+        display_columns = [col for col in data_df.columns if col != "Year"]
+        self.tableWidget.setColumnCount(len(display_columns))
+        self.tableWidget.setHorizontalHeaderLabels(display_columns)
+        for i, (index, row) in enumerate(data_df[display_columns].iterrows()):
             for j, value in enumerate(row):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
-        self.comboBox_sort_column.clear()
-        self.comboBox_sort_options.addItems(self.data_processor.get_columns())
 
-    def sort_dataframe(self):
-        year = self.comboBox_year.currentText()
-        index = self.comboBox_sort_options.findText("Yds")
-        if index >= 0:
-            self.comboBox_sort_options.setCurrentIndex(index)
-        sort_by = self.comboBox_sort_options.currentText()
-        sort_order = self.comboBox_sort_order.currentText() 
-        self.data_processor.sort_dataframe(year, sort_by, sort_order)
-        self.update_table()
-        
     def update_table(self):
         self.tableWidget.clearContents()
+        selected_stat_type = self.comboBox_selector.currentText()
         year = self.comboBox_year.currentText()
         if year in self.data_processor.data_dict:
             data_df = self.data_processor.data_dict[year]
+            sort_column = self.comboBox_sort.currentText()
+            if sort_column:
+                data_df = data_df.sort_values(by=sort_column, ascending=False)
+            
+            display_columns = [col for col in data_df.columns if col != "Year"]
             self.tableWidget.setRowCount(len(data_df))
-            self.tableWidget.setColumnCount(len(data_df.columns))
-            self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-            for i, (index, row) in enumerate(data_df.iterrows()):
+            self.tableWidget.setColumnCount(len(display_columns))
+            self.tableWidget.setHorizontalHeaderLabels(display_columns)
+            for i, (index, row) in enumerate(data_df[display_columns].iterrows()):
                 for j, cell in enumerate(row):
                     self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
         else:
-            print(f"No data for year {year}")
+            print(f"No data for year {year} and stat type {selected_stat_type}")
 
     def show_legend(self):
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Legend")
         dialog.resize(400, 300)
-
         text_edit = QtWidgets.QTextEdit(dialog)
         text_edit.setGeometry(10, 10, 380, 280)
         text_edit.setReadOnly(True)
@@ -490,5 +493,14 @@ class Ui_MainWindow(object):
         stat, ok2 = QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
         if not ok2:
             return
-        self.data_processor.plot_player_stat(player, stat)
+        fig = self.data_processor.plot_player_stat(player, stat)
+        if fig:
+            plot_window = QtWidgets.QDialog()
+            plot_window.setWindowTitle(f"{player}'s {stat} Stats Over the Years")
+            canvas = FigureCanvas(fig)
+            layout = QtWidgets.QVBoxLayout()
+            layout.addWidget(canvas)
+            plot_window.setLayout(layout)
+            plot_window.exec_()
+
 
