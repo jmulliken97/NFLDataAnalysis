@@ -2,24 +2,43 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PyQt5 import QtWidgets
-import json
 from collections.abc import MutableMapping
 import numpy as np
+from data_loader import DataLoader
 
 class DataProcessor:
-    def __init__(self, text_edit_widget):
-        self.data_dict = {}
+    def __init__(self, bucket_name=None, text_edit_widget=None):
+        if bucket_name is None:
+            options = QtWidgets.QFileDialog.Options()
+            bucket_name, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select the S3 Bucket (JSON File)", "", "JSON Files (*.json);;All Files (*)", options=options)
+            if not bucket_name:
+                raise ValueError("No S3 bucket (JSON file) selected.")
+        self.data_loader = DataLoader(bucket_name)
         self.textEdit = text_edit_widget
-        self.league = None
+        self.data_dict = {}
+        self.file_years_dict = {}
         self.passing_headers = ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
         self.rushing_headers = ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
-        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC']
+        self.defense_headers = ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']
+        self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']  
         
+    def load_and_process_data(self, stats_type):
+        data = self.data_loader.load_data_from_s3(stats_type)
+        self.data_dict = self.process_data(data)
+
+        for key, value in self.data_dict.items():
+            print(key, ":", value.keys())
+
+        return list(self.data_dict.keys())
+
     def determine_stats_type(self, stats):
         stats_keys = stats.keys()
         stat_types = [("passing", self.passing_headers), 
                       ("rushing", self.rushing_headers), 
-                      ("receiving", self.receiving_headers)]
+                      ("receiving", self.receiving_headers), 
+                      ("defense", self.defense_headers), 
+                      ("kicking", self.kicking_headers)]
 
         for stat_type, headers in stat_types:
             if all(item in stats_keys for item in headers):
@@ -160,66 +179,64 @@ class DataProcessor:
             return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player, stats_type
         elif stats_type == "rushing" or stats_type == "receiving" or stats_type == "defense" or stats_type == "kicking":
             return round(score, 2), None, None, player, stats_type
-
-    def flatten_json(self, data):
-        flattened_data = []
-        for year, players in data.items():
-            for player, stats in players.items():
-                if isinstance(stats, dict):
-                    stats['Year'] = year  
-                    stats['Player'] = player  
-                    flattened_data.append(stats)
-        return pd.DataFrame(flattened_data)
     
-    def load_json(self):
-        file_name = QtWidgets.QFileDialog.getOpenFileName(None, "Open JSON File", "", "JSON Files (*.json)")
-        if file_name[0]:
-            self.file_name = file_name[0]
-            with open(self.file_name, 'r') as json_file:
-                data = json.load(json_file)
-                self.data_dict = {}
-                for year, year_data in data.items():
-                    df = pd.DataFrame.from_records(list(year_data.values()))
-                    scores = []
-                    td_int_ratios = []
-                    any_as = []
-                    efficiency_metrics = {"Y/A": [], "TD/A": [], "TD/G": [], 
-                                        "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []}
-                    for _, player in df.iterrows():
-                        score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
-                        scores.append(score)
-                        if stats_type == "passing":
-                            if td_int_ratio is not None:
-                                td_int_ratios.append(round(td_int_ratio, 2))
-                            if any_a is not None:
-                                any_as.append(round(any_a, 2))
-                        for metric in efficiency_metrics.keys():
-                            if updated_player.get(metric) is not None: 
-                                efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
-                    df['Score'] = scores
-                    if td_int_ratios:
-                        df['TD:INT Ratio'] = td_int_ratios
-                    if any_as:
-                        df['ANY/A'] = any_as
-                    for metric, values in efficiency_metrics.items():
-                        if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
-                            df[metric] = values
-                    self.data_dict[year] = df
-            with open(self.file_name, 'w') as json_file:
-                json.dump(data, json_file)
-            columns = self.get_columns()
+    def flatten_data(self, data):
+        flattened_data = []
+        for year, players_data in data.items():
+            for player_name, player_stats in players_data.items():
+                player_stat_copy = player_stats.copy()
+                player_stat_copy['Year'] = year
+                flattened_data.append(player_stat_copy)
+        return flattened_data
 
-    def get_file_name(self):
-        return self.file_name if hasattr(self, 'file_name') else 'No file loaded.'
+    def process_data(self, data):
+        flattened_data = self.flatten_data(data)
+        df = pd.DataFrame(flattened_data)
+        
+        result_dict = {}
+        
+        for year, group in df.groupby('Year'):
+            scores = []
+            td_int_ratios = []
+            any_as = []
+            efficiency_metrics = {
+                "Y/A": [], "TD/A": [], "TD/G": [], 
+                "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
+            }
+
+            for _, player in group.iterrows():
+                score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
+                scores.append(score)
+                if stats_type == "passing":
+                    if td_int_ratio is not None:
+                        td_int_ratios.append(round(td_int_ratio, 2))
+                    if any_a is not None:
+                        any_as.append(round(any_a, 2))
+                for metric in efficiency_metrics.keys():
+                    if updated_player.get(metric) is not None: 
+                        efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
+
+            group['Score'] = scores
+            if td_int_ratios:
+                group['TD:INT Ratio'] = td_int_ratios
+            if any_as:
+                group['ANY/A'] = any_as
+            for metric, values in efficiency_metrics.items():
+                if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                    group[metric] = values
+            
+            result_dict[str(year)] = group
+
+        return result_dict
     
     def get_player_names(self, year=None):
         player_names = []
+        df = self.data_dict['All']
         if year is not None:
-            if year in self.data_dict:
-                player_names = self.data_dict[year]['Player'].unique().tolist()
+            df = df[df['Year'] == year]
+            player_names = df['Player'].unique().tolist()
         else:
-            for year in self.data_dict:
-                player_names.extend(self.data_dict[year]['Player'].unique().tolist())
+            player_names = df['Player'].unique().tolist()
         return list(set(player_names))
 
     def get_columns(self, year=None):
@@ -233,15 +250,6 @@ class DataProcessor:
             for df in self.data_dict.values():
                 all_columns.update(df.columns.tolist())
             return list(all_columns)
-
-    def sort_dataframe(self, year, sort_by, sort_order):
-        dataframe = self.data_dict[year]
-        if not sort_by:
-            return
-        if sort_order == "Ascending":
-            self.data_dict[year] = dataframe.sort_values(by=sort_by)
-        else:
-            self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)
   
     def correlation_analysis(self, year=None):
         if year is None: 
