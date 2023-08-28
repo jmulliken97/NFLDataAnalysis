@@ -11,11 +11,11 @@ class DataLoader:
         self.bucket_name = bucket_name
         self.data_dict = {}
         self.stats_file_mapping = {
-            'passing': 'passing_stats_all_years.json',
-            'rushing': 'rushing_stats_all_years.json',
-            'receiving': 'receiving_stats_all_years.json',
-            'defense': 'defense_stats_all_years.json',
-            'kicking': 'kicking_stats_all_years.json'
+            'Passing': 'passing_stats_all_years.json',
+            'Rushing': 'rushing_stats_all_years.json',
+            'Receiving': 'receiving_stats_all_years.json',
+            'Defense': 'defense_stats_all_years.json',
+            'Kicking': 'kicking_stats_all_years.json'
         }
 
     def load_data_from_s3(self, stats_type):

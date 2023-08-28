@@ -101,13 +101,13 @@ class Ui_MainWindow(object):
         self.comboBox_year.setObjectName("comboBox_year")
         
         self.comboBox_selector = QtWidgets.QComboBox(self.json_tab)
-        self.comboBox_selector.setGeometry(QtCore.QRect(350, 20, 100, 31))
-        self.comboBox_selector.addItems(['passing', 'rushing', 'receiving', 'defense', 'kicking'])
+        self.comboBox_selector.setGeometry(QtCore.QRect(95, 20, 100, 31))
+        self.comboBox_selector.addItems(['Passing', 'Rushing', 'Receiving', 'Defense', 'Kicking'])
         self.comboBox_selector.setObjectName("comboBox_selector")
         
-        self.label_filename = QtWidgets.QLabel(self.centralwidget)
-        self.label_filename.setGeometry(QtCore.QRect(600, 20, 180, 20))
-        self.label_filename.setText("No file loaded.")
+        self.comboBox_sort = QtWidgets.QComboBox(self.json_tab)
+        self.comboBox_sort.setGeometry(QtCore.QRect(205, 20, 75, 31))
+        self.comboBox_sort.setObjectName("comboBox_sort")
         
         self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_legend.setGeometry(QtCore.QRect(600, 20, 200, 31))
@@ -182,6 +182,7 @@ class Ui_MainWindow(object):
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
+        self.comboBox_sort.currentIndexChanged.connect(self.update_table)
 
     def scrape_all(self):
         stat = []
@@ -239,13 +240,26 @@ class Ui_MainWindow(object):
         self.data_processor.load_and_process_data(stat_type)
         self.comboBox_year.clear()
         self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
+        if "2022" in self.data_processor.data_dict:
+            self.comboBox_year.setCurrentText("2022")
+            
         year = self.comboBox_year.currentText()
         data_df = self.data_processor.data_dict[year]
+        self.comboBox_sort.clear()
 
+        sort_columns = [col for col in data_df.columns if col not in ["Player", "Team", "Year"]]
+        self.comboBox_sort.addItems(sort_columns)
+        
+        index_of_yds = self.comboBox_sort.findText('Yds')
+        if index_of_yds != -1:
+            self.comboBox_sort.setCurrentIndex(index_of_yds)
+        self.update_table()
         self.tableWidget.setRowCount(len(data_df))
-        self.tableWidget.setColumnCount(len(data_df.columns))
-        self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-        for i, (index, row) in enumerate(data_df.iterrows()):
+        
+        display_columns = [col for col in data_df.columns if col != "Year"]
+        self.tableWidget.setColumnCount(len(display_columns))
+        self.tableWidget.setHorizontalHeaderLabels(display_columns)
+        for i, (index, row) in enumerate(data_df[display_columns].iterrows()):
             for j, value in enumerate(row):
                 self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
 
@@ -255,10 +269,15 @@ class Ui_MainWindow(object):
         year = self.comboBox_year.currentText()
         if year in self.data_processor.data_dict:
             data_df = self.data_processor.data_dict[year]
+            sort_column = self.comboBox_sort.currentText()
+            if sort_column:
+                data_df = data_df.sort_values(by=sort_column, ascending=False)
+            
+            display_columns = [col for col in data_df.columns if col != "Year"]
             self.tableWidget.setRowCount(len(data_df))
-            self.tableWidget.setColumnCount(len(data_df.columns))
-            self.tableWidget.setHorizontalHeaderLabels(data_df.columns)
-            for i, (index, row) in enumerate(data_df.iterrows()):
+            self.tableWidget.setColumnCount(len(display_columns))
+            self.tableWidget.setHorizontalHeaderLabels(display_columns)
+            for i, (index, row) in enumerate(data_df[display_columns].iterrows()):
                 for j, cell in enumerate(row):
                     self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
         else:

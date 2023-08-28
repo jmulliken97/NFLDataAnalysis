@@ -19,7 +19,7 @@ class DataProcessor:
         self.file_years_dict = {}
         self.passing_headers = ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
         self.rushing_headers = ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
-        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM']
+        self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC']
         self.defense_headers = ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']
         self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']  
         
@@ -250,15 +250,6 @@ class DataProcessor:
             for df in self.data_dict.values():
                 all_columns.update(df.columns.tolist())
             return list(all_columns)
-
-    def sort_dataframe(self, year, sort_by, sort_order):
-        dataframe = self.data_dict[year]
-        if not sort_by:
-            return
-        if sort_order == "Ascending":
-            self.data_dict[year] = dataframe.sort_values(by=sort_by)
-        else:
-            self.data_dict[year] = dataframe.sort_values(by=sort_by, ascending=False)
   
     def correlation_analysis(self, year=None):
         if year is None: 
