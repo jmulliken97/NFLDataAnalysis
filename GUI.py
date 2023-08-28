@@ -7,6 +7,7 @@ import seaborn as sns
 import webscraper
 import penalties
 import pandas as pd
+import openpyxl
 
 bucket_name = "statsbucketpython"
 
@@ -165,7 +166,6 @@ class Ui_MainWindow(object):
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
         self.pushButton_correlation.setText(_translate("MainWindow", "Correlation Analysis")) 
         self.pushButton_display_stats.setText(_translate("MainWindow", "Descriptive Stats")) 
-        # self.pushButton_handle_missing.setText(_translate("MainWindow", "Handle Missing Data")) 
         self.pushButton_detect_outliers.setText(_translate("MainWindow", "Detect Outliers"))
         self.pushButton_penalties.setText(QtCore.QCoreApplication.translate("MainWindow", "Scrape Penalties"))
 
@@ -178,7 +178,6 @@ class Ui_MainWindow(object):
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
         self.pushButton_display_stats.clicked.connect(self.display_stats)
-        # self.pushButton_handle_missing.clicked.connect(self.handle_missing_data)
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
@@ -214,7 +213,7 @@ class Ui_MainWindow(object):
             elif stat_type == 'receiving':
                 max_players = 100
             elif stat_type == 'defense':
-                max_players = 150
+                max_players = 960
             elif stat_type == 'kicking':
                 max_players = 35
             else:
@@ -282,6 +281,16 @@ class Ui_MainWindow(object):
                     self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
         else:
             print(f"No data for year {year} and stat type {selected_stat_type}")
+            
+    def export_to_excel(self, data, filename):
+        # Convert the data to DataFrame if it's not already a DataFrame
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
+
+        # Save to Excel
+        filepath = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", f"{filename}.xlsx", "Excel Files (*.xlsx)")[0]
+        if filepath:
+            data.to_excel(filepath, engine='openpyxl')
 
     def show_legend(self):
         dialog = QtWidgets.QDialog()
@@ -385,6 +394,10 @@ class Ui_MainWindow(object):
                 explanation = "A correlation close to 1 indicates a strong positive relationship, -1 indicates strong negative relationship, a near 0 indicates no relationship."
                 label = QtWidgets.QLabel(explanation)
                 layout.insertWidget(0, label)
+                
+                export_btn = QtWidgets.QPushButton("Export to Excel")
+                export_btn.clicked.connect(lambda: self.export_to_excel(correlation_matrix, "correlation_analysis"))
+                layout.addWidget(export_btn)
 
                 dialog.exec_()
             else:
@@ -414,14 +427,14 @@ class Ui_MainWindow(object):
                 layout = QVBoxLayout()
                 layout.addWidget(table)
                 dialog.setLayout(layout)
+                
+                export_btn = QtWidgets.QPushButton("Export to Excel")
+                export_btn.clicked.connect(lambda: self.export_to_excel(stats, "descriptive_stats"))
+                layout.addWidget(export_btn)
+
                 dialog.exec_()
             else:
                 self.textEdit.setText("No data available for the selected year.")
-
-    # def handle_missing_data(self):
-    #     year = self.comboBox_year.currentText()
-    #     self.data_processor.handle_missing_data(year)
-    #     self.textEdit.setText("Missing data has been handled.")
 
     def detect_outliers(self):
         years = list(self.data_processor.data_dict.keys())
@@ -453,6 +466,10 @@ class Ui_MainWindow(object):
                 explanation = "The table below shows the detected outliers for the selected year. An outlier is a data point that significantly differs from other observations. It could be due to variability in the data or experimental errors."
                 label = QtWidgets.QLabel(explanation)
                 layout.insertWidget(0, label)
+                
+                export_btn = QtWidgets.QPushButton("Export to Excel")
+                export_btn.clicked.connect(lambda: self.export_to_excel(outliers_df, "outliers_analysis"))
+                layout.addWidget(export_btn)
 
                 dialog.exec_()
             else:
@@ -461,7 +478,9 @@ class Ui_MainWindow(object):
             self.textEdit.setText("No year selected.")
 
     def distribution(self):
-        stat, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", self.data_processor.get_columns(), editable=False)
+        stats_columns = self.data_processor.get_columns()
+        stats_columns.append("All")
+        stat, ok = QtWidgets.QInputDialog.getItem(None, "Input", "Select a stat:", stats_columns, editable=False)
         if not ok:
             return
         years = list(self.data_processor.data_dict.keys())
@@ -470,7 +489,15 @@ class Ui_MainWindow(object):
         if not ok:
             return
         year = None if year == 'All' else year
-        data = self.data_processor.distribution(stat, year)
+        data_dict = {}
+        if stat == "All":
+            for each_stat in stats_columns:
+                if each_stat not in ["Player", "Team", "Year", "All"]:
+                    data_dict[each_stat] = self.data_processor.distribution(each_stat, year)
+        else:
+            data_dict[stat] = self.data_processor.distribution(stat, year)
+
+        plot_data = data_dict[stat] if stat != "All" else list(data_dict.values())[0]
         plot_window = QtWidgets.QDialog()
         plot_window.setWindowTitle(f"Distribution of {stat} in {'all years' if year is None else year}")
         fig = Figure(figsize=(5, 4), dpi=100)
@@ -479,10 +506,14 @@ class Ui_MainWindow(object):
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(canvas)
         plot_window.setLayout(layout)
-        ax.hist(data, bins='auto', alpha=0.7, rwidth=0.85, color='blue', edgecolor='black')
+        ax.hist(plot_data, bins='auto', alpha=0.7, rwidth=0.85, color='blue', edgecolor='black')
         ax.set_title(f'Distribution of {stat} in {"all years" if year is None else year}')
         ax.set_xlabel(stat)
         ax.set_ylabel('Frequency')
+        
+        export_btn = QtWidgets.QPushButton("Export to Excel")
+        export_btn.clicked.connect(lambda: self.export_to_excel(data_dict, "distribution_data"))
+        layout.addWidget(export_btn)
 
         plot_window.exec_()
 
