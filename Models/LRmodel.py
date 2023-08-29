@@ -5,7 +5,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
 # Load the dataset
-file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_data_qb_receivers.json"
+file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_qb_receivers_with_sos_approximated.json"
 df_cleaned = pd.read_json(file_path, orient="records")
 
 # Convert the extended data to a pandas DataFrame

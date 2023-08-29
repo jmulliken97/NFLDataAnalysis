@@ -77,6 +77,11 @@ class Ui_MainWindow(object):
         self.checkBox_kicking.setGeometry(QtCore.QRect(50, 200, 200, 31))
         self.checkBox_kicking.setText("Kicking")
         self.checkBox_kicking.setObjectName("checkBox_kicking")
+        
+        self.checkBox_team_def = QtWidgets.QCheckBox(self.scraping_tab)
+        self.checkBox_team_def.setGeometry(QtCore.QRect(50, 240, 200, 31))
+        self.checkBox_team_def.setText("Team Defense")
+        self.checkBox_team_def.setObjectName("checkBox_team_def")
 
         self.pushButton_all = QtWidgets.QPushButton(self.scraping_tab)
         self.pushButton_all.setGeometry(QtCore.QRect(800, 80, 175, 30))
@@ -195,6 +200,8 @@ class Ui_MainWindow(object):
             stat.append("defense")
         if self.checkBox_kicking.isChecked():
             stat.append("kicking")
+        if self.checkBox_team_def.isChecked():
+            stat.append("team-defense")
         if not stat:
             QMessageBox.warning(self.centralwidget, "Warning", "No stat type selected.")
             return
@@ -216,6 +223,8 @@ class Ui_MainWindow(object):
                 max_players = 960
             elif stat_type == 'kicking':
                 max_players = 35
+            elif stat_type == 'team-defense':
+                max_players = 32
             else:
                 raise ValueError(f"Unknown stat type: {stat_type}")
             webscraper.scrape_all(stat_type, max_players, start_year, end_year)
@@ -249,9 +258,18 @@ class Ui_MainWindow(object):
         sort_columns = [col for col in data_df.columns if col not in ["Player", "Team", "Year"]]
         self.comboBox_sort.addItems(sort_columns)
         
-        index_of_yds = self.comboBox_sort.findText('Yds')
-        if index_of_yds != -1:
+        if 'Yds' in data_df.columns:
+            index_of_yds = self.comboBox_sort.findText('Yds')
             self.comboBox_sort.setCurrentIndex(index_of_yds)
+        else:
+            index_of_pts = self.comboBox_sort.findText('Pts')
+            if index_of_pts != -1:
+                self.comboBox_sort.setCurrentIndex(index_of_pts)
+        if stat_type == "Kicking":
+            index_of_pts = self.comboBox_sort.findText('Pts')
+            if index_of_pts != -1:
+                self.comboBox_sort.setCurrentIndex(index_of_pts)
+
         self.update_table()
         self.tableWidget.setRowCount(len(data_df))
         
@@ -269,8 +287,10 @@ class Ui_MainWindow(object):
         if year in self.data_processor.data_dict:
             data_df = self.data_processor.data_dict[year]
             sort_column = self.comboBox_sort.currentText()
-            if sort_column:
+            if sort_column in data_df.columns:
                 data_df = data_df.sort_values(by=sort_column, ascending=False)
+            else:
+                print(f"Warning: Column '{sort_column}' not found in dataframe. Data not sorted.")
             
             display_columns = [col for col in data_df.columns if col != "Year"]
             self.tableWidget.setRowCount(len(data_df))

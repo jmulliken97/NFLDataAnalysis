@@ -78,7 +78,7 @@ class DataProcessor:
             }
             for key in ["Yds", "YPA", "Pct", "TD", "Int", "Rate", "Sack", "Loss", "Att"]:
                 if key in player:
-                    player[key] = float(player[key])
+                    player[key] = 0.0 if player[key] == '--' else float(player[key])
                                 
             if player.get("Int") != 0:
                 player["TD:INT Ratio"] = round(player["TD"] / player["Int"], 2)
@@ -143,7 +143,7 @@ class DataProcessor:
             }
             for key in ["Gms", "Int", "Yds", "Avg", "TD", "Solo", "Ast", "Tot", "Sack", "YdsL"]:
                 if key in player:
-                    player[key] = float(player[key])
+                    player[key] = 0.0 if player[key] == '--' else float(player[key])
                     
         elif stats_type == "kicking":
             weights = {
@@ -159,10 +159,10 @@ class DataProcessor:
             }
             for key in ["Gms", "Lg", "Pts"]:
                 if key in player:
-                    player[key] = float(player[key])
+                    player[key] = 0.0 if player[key] == '--' else float(player[key])
             for key in ["PAT", "FG", "0-19", "20-29", "30-39", "40-49", "50+"]:
                 if key in player:
-                    successes, attempts = map(int, player[key].split('/'))
+                    successes, attempts = map(int, (0 if val == '--' else val for val in player[key].split('/')))
                     player[key] = successes / attempts if attempts != 0 else 0
 
         if weights is None:

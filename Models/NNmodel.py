@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 
 # Load the cleaned JSON file into a DataFrame
-file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_data_qb_receivers.json"
+file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_qb_receivers_with_sos_approximated.json"
 df_cleaned = pd.read_json(file_path, orient="records")
 
 # Extracting features and target
@@ -44,4 +44,4 @@ y_pred_nn = model_nn.predict(X_val_scaled).flatten()
 mse_nn = mean_squared_error(y_val, y_pred_nn)
 print(f"Mean Squared Error for Neural Network: {mse_nn}")
 
-#Mean Squared Error for Neural Network: 19083.92693079007
+#Mean Squared Error for Neural Network: 16490.428360125632

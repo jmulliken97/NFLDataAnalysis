@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.ensemble import GradientBoostingRegressor
 
 # Load the cleaned JSON file into a DataFrame
-file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_data_qb_receivers.json"
+file_path = "E:/Bootcamp/NFLDataAnalysis/Models/enriched_qb_receivers_with_sos_approximated.json"
 df_cleaned = pd.read_json(file_path, orient="records")
 
 # Extracting features and target

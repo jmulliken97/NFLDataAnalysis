@@ -31,7 +31,8 @@ def scrape_year(stat_type, max_players, year):
         "rushing": ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
         "receiving": ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'TD', 'Lg', '1st', '1st%', '20+', '40+', 'FUM'],
         "defense": ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL'], 
-        "kicking": ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg', 'Pts']
+        "kicking": ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg', 'Pts'],
+        "team-defense": ['Team','Gms','PtsAllow','Yds','PassYds','RushYds','TO','1stD','Cmp','Att','YPA','TD','Int','Sack','Loss']
     }
 
     headers = headers_dict[stat_type]
@@ -44,6 +45,9 @@ def scrape_year(stat_type, max_players, year):
     }
 
     current_url = f"https://www.footballdb.com/statistics/nfl/player-stats/{stat_type}/{year}/regular-season"
+    
+    if stat_type == "team-defense":
+        current_url = f"https://www.footballdb.com/stats/teamstat.html?lg=NFL&yr={year}&type=reg"
 
     while player_count < max_players:
         response = requests.get(current_url, headers=request_headers)
@@ -63,7 +67,10 @@ def scrape_year(stat_type, max_players, year):
         headers = df.columns.tolist()
 
         for _, row in df.iterrows():
-            name = row['Player']
+            if stat_type == 'team-defense':
+                name = row['Team']
+            else:
+                name = row['Player']
 
             stats = {}
             for idx, stat_name in enumerate(headers):
@@ -81,7 +88,8 @@ def scrape_year(stat_type, max_players, year):
 
                 stats[stat_name] = stat_value
 
-            stats = clean_player_name(stats)
+            if stat_type != 'team-defense':
+                stats = clean_player_name(stats)
             new_stats[name] = stats  # Store the new data in new_stats
             player_count += 1
 

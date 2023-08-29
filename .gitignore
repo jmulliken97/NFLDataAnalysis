@@ -4,3 +4,4 @@ __pycache__/
 # Ignore generated JSON files
 *.json
 .env
+Models/Passing Info.xlsx
