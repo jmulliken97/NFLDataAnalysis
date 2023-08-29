@@ -129,7 +129,6 @@ class DataProcessor:
             
         elif stats_type == "defense":
             weights = {
-                "Gms": 0.05,
                 "Int": 0.15,
                 "Yds": 0.10,
                 "Avg": 0.10,
@@ -139,7 +138,7 @@ class DataProcessor:
                 "Solo": 0.10,
                 "Ast": 0.05,
                 "Tot": 0.10,
-                "Sack": 0.10,
+                "Sack": 0.15,
                 "YdsL": 0.10
             }
             for key in ["Gms", "Int", "Yds", "Avg", "TD", "Solo", "Ast", "Tot", "Sack", "YdsL"]:
@@ -148,14 +147,13 @@ class DataProcessor:
                     
         elif stats_type == "kicking":
             weights = {
-                "Gms": 0.05,
                 "PAT": 0.15,
                 "FG": 0.25,
                 "0-19": 0.05,
                 "20-29": 0.05,
                 "30-39": 0.05,
                 "40-49": 0.05,
-                "50+": 0.05,
+                "50+": 0.10,
                 "Lg": 0.10,
                 "Pts": 0.30
             }
