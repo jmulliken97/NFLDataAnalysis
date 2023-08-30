@@ -4,10 +4,10 @@ from data_processor import DataProcessor
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
-import webscraper
-import penalties
+import Scraping.webscraper as webscraper
+import Scraping.penalties as penalties
 from data_loader import DataLoader
-from roster import load_roster
+from Scraping.roster import load_roster
 import pandas as pd
 import openpyxl
 
@@ -167,8 +167,14 @@ class Ui_MainWindow(object):
 
         self.tableWidget_roster = QtWidgets.QTableWidget(self.roster_tab)
         self.tableWidget_roster.setGeometry(QtCore.QRect(10, 60, 965, 690))
-        self.tableWidget_roster.setColumnCount(3) 
-        self.tableWidget_roster.setHorizontalHeaderLabels(["Number", "Name", "Position"])
+        self.tableWidget_roster.setColumnCount(7) 
+        self.tableWidget_roster.setHorizontalHeaderLabels(["Num", "Name", "Tag", "Age", "Height", "Weight", "NFL Exp."])
+        
+        self.comboBox_rossort = QtWidgets.QComboBox(self.roster_tab)
+        self.comboBox_rossort.setGeometry(QtCore.QRect(120, 20, 150, 31))
+        self.comboBox_rossort.setObjectName("comboBox_sort")
+        column_headers = ["Num", "Name", "Tag", "Age", "Height", "Weight", "NFL Exp."]
+        self.comboBox_rossort.addItems(column_headers)
 
         # add roster tab to the tab widget
         self.tabWidget.addTab(self.roster_tab, "Roster")
@@ -430,34 +436,39 @@ class Ui_MainWindow(object):
         if ok:
             year = None if year == 'All' else year
             correlation_matrix = self.data_processor.correlation_analysis(year)
-            if correlation_matrix is not None:
-               
-                dialog = QtWidgets.QDialog()
-                dialog.setWindowTitle("Correlation Analysis")
-                dialog.resize(1000, 700)  
-
-                figure = Figure()
-                canvas = FigureCanvas(figure)
-
-                layout = QtWidgets.QVBoxLayout()
-                layout.addWidget(canvas)
-                dialog.setLayout(layout)
-
-                ax = figure.add_subplot(111)
-                sns.heatmap(correlation_matrix, ax=ax)
-                canvas.draw()
-                
-                explanation = "A correlation close to 1 indicates a strong positive relationship, -1 indicates strong negative relationship, a near 0 indicates no relationship."
-                label = QtWidgets.QLabel(explanation)
-                layout.insertWidget(0, label)
-                
-                export_btn = QtWidgets.QPushButton("Export to Excel")
-                export_btn.clicked.connect(lambda: self.export_to_excel(correlation_matrix, "correlation_analysis"))
-                layout.addWidget(export_btn)
-
-                dialog.exec_()
-            else:
+            
+            if correlation_matrix is None:
                 self.textEdit.setText("No data available for the selected year.")
+                return
+            
+            if correlation_matrix.empty:
+                self.textEdit.setText("Correlation matrix is empty. Unable to plot heatmap.")
+                return
+            
+            dialog = QtWidgets.QDialog()
+            dialog.setWindowTitle("Correlation Analysis")
+            dialog.resize(1000, 700)  
+
+            figure = Figure()
+            canvas = FigureCanvas(figure)
+
+            layout = QtWidgets.QVBoxLayout()
+            layout.addWidget(canvas)
+            dialog.setLayout(layout)
+
+            ax = figure.add_subplot(111)
+            sns.heatmap(correlation_matrix, ax=ax)
+            canvas.draw()
+
+            explanation = "A correlation close to 1 indicates a strong positive relationship, -1 indicates strong negative relationship, a near 0 indicates no relationship."
+            label = QtWidgets.QLabel(explanation)
+            layout.insertWidget(0, label)
+
+            export_btn = QtWidgets.QPushButton("Export to Excel")
+            export_btn.clicked.connect(lambda: self.export_to_excel(correlation_matrix, "correlation_analysis"))
+            layout.addWidget(export_btn)
+
+            dialog.exec_()
         else:
             self.textEdit.setText("No year selected.")
 
@@ -594,9 +605,34 @@ class Ui_MainWindow(object):
         team_selected = self.comboBox_team.currentText()
         roster = self.rosters_data.get(team_selected, [])
 
+        # Sort the roster by Position to group them in the GUI
+        roster = sorted(roster, key=lambda x: x["Position"])
+
         self.tableWidget_roster.setRowCount(len(roster))
         for i, player in enumerate(roster):
-            self.tableWidget_roster.setItem(i, 0, QTableWidgetItem(player["Number"]))
-            self.tableWidget_roster.setItem(i, 1, QTableWidgetItem(player["Name"]))
-            self.tableWidget_roster.setItem(i, 2, QTableWidgetItem(player["Position"]))
+            self.tableWidget_roster.setItem(i, 0, QTableWidgetItem(player.get("Number", "")))
+            self.tableWidget_roster.setItem(i, 1, QTableWidgetItem(player.get("Name", "")))
+            self.tableWidget_roster.setItem(i, 2, QTableWidgetItem(player.get("PositionTag", "")))
+            self.tableWidget_roster.setItem(i, 3, QTableWidgetItem(player.get("Age", "")))
+            self.tableWidget_roster.setItem(i, 4, QTableWidgetItem(player.get("Height", "")))
+            self.tableWidget_roster.setItem(i, 5, QTableWidgetItem(player.get("Weight", "")))
+            self.tableWidget_roster.setItem(i, 6, QTableWidgetItem(player.get("NFL Exp.", "")))
 
+            # Center align content in each cell
+            for j in range(7):  # Loop through columns
+                self.tableWidget_roster.item(i, j).setTextAlignment(QtCore.Qt.AlignCenter)
+
+        # Set column widths and other adjustments
+        widest_name = max(len(player.get("Name", "")) for player in roster)
+        self.tableWidget_roster.setColumnWidth(0, 75)
+        self.tableWidget_roster.setColumnWidth(1, widest_name * 10)
+        self.tableWidget_roster.setColumnWidth(2, self.tableWidget_roster.horizontalHeader().sectionSize(2))
+        self.tableWidget_roster.setColumnWidth(3, 75)
+        self.tableWidget_roster.setColumnWidth(4, self.tableWidget_roster.horizontalHeader().sectionSize(2))
+        self.tableWidget_roster.setColumnWidth(5, self.tableWidget_roster.horizontalHeader().sectionSize(2))
+        self.tableWidget_roster.setColumnWidth(6, self.tableWidget_roster.horizontalHeader().sectionSize(2))
+        
+        self.comboBox_rossort.currentIndexChanged.connect(self.sort_table)
+
+    def sort_table(self, logical_index):
+        self.tableWidget_roster.sortItems(logical_index)

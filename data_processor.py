@@ -6,6 +6,7 @@ from collections.abc import MutableMapping
 import numpy as np
 from data_loader import DataLoader
 
+
 class DataProcessor:
     def __init__(self, bucket_name=None, text_edit_widget=None):
         if bucket_name is None:
@@ -22,6 +23,7 @@ class DataProcessor:
         self.receiving_headers = ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC']
         self.defense_headers = ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']
         self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']  
+        print(f"Initialized DataLoader with {len(self.data_loader.get_data())} stats types.")
         
     def load_and_process_data(self, preloaded_data, stats_type):
         data_for_stat = preloaded_data.get(stats_type)
@@ -36,7 +38,8 @@ class DataProcessor:
             
             processed_data = self.process_data(data_df)
             self.data_dict[year] = processed_data
-
+        if data_for_stat:
+            print(f"Processing data for {stats_type}: {len(data_for_stat)} years available.")
         for key, value in self.data_dict.items():
             print(key, ":", value.keys())
         return list(self.data_dict.keys())
@@ -44,7 +47,16 @@ class DataProcessor:
     def process_data(self, data_df):
         result_dict = {}
         data_df = data_df.transpose()
+
+        # Convert columns to numeric types
+        columns_to_convert = ['Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'T%', 'Int', 'Int%', 'I%', 'Lg', 'Sack', 'Loss', 'Rate']
+        for col in columns_to_convert:
+            if col in data_df.columns:
+                data_df[col] = pd.to_numeric(data_df[col], errors='coerce')
         
+        numeric_cols = data_df.select_dtypes(include=[np.number]).columns
+        data_df[numeric_cols] = data_df[numeric_cols].fillna(data_df[numeric_cols].mean())
+ 
         efficiency_metrics = {
             "Y/A": [], "TD/A": [], "TD/G": [], 
             "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
@@ -59,6 +71,7 @@ class DataProcessor:
             if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
                 data_df[metric] = values
 
+        print(f"Processed data: {data_df.shape[0]} rows and {data_df.shape[1]} columns.")
         return data_df
 
     def get_player_names(self, year=None):
@@ -90,7 +103,20 @@ class DataProcessor:
             combined_df = self.data_dict[year]
         else: 
             return None
+        
+        if combined_df.empty:
+            print("combined_df is empty.")
+            return None
+
         numeric_df = combined_df.select_dtypes(include=[np.number])
+        
+        if numeric_df.empty:
+            print("numeric_df is empty. No numeric columns found.")
+            return None
+        
+        if numeric_df.isna().all().all():
+            return None
+        
         return numeric_df.corr()
 
     def descriptive_stats(self, year=None):
@@ -101,6 +127,12 @@ class DataProcessor:
         else:
             return None
         numeric_df = combined_df.select_dtypes(include=[np.number])
+        
+        # Checking if numeric_df is not empty
+        if numeric_df.empty:
+            print("numeric_df is empty. No numeric columns found.")
+            return None
+
         return numeric_df.describe()
     
     def distribution(self, stat, year=None):
