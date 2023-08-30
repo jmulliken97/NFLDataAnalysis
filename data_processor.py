@@ -24,48 +24,42 @@ class DataProcessor:
         self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']  
         
     def load_and_process_data(self, preloaded_data, stats_type):
-        data = preloaded_data.get(stats_type)
-        if not data:
-            raise ValueError(f"No data found for stats type: {stats_type}")
-        self.data_dict = self.process_data(data)
+        data_for_stat = preloaded_data.get(stats_type)
+        
+        if data_for_stat is None or not isinstance(data_for_stat, MutableMapping):
+            raise ValueError(f"No data dictionary found for stats type: {stats_type}")
+        
+        # Iterate over all years for the given stats_type
+        for year, data_df in data_for_stat.items():
+            if not isinstance(data_df, pd.DataFrame):
+                raise ValueError(f"Data for year {year} and stats type {stats_type} is not a dataframe.")
+            
+            processed_data = self.process_data(data_df)
+            self.data_dict[year] = processed_data
+
         for key, value in self.data_dict.items():
             print(key, ":", value.keys())
         return list(self.data_dict.keys())
 
-    
-    def flatten_data(self, data):
-        flattened_data = []
-        for year, players_data in data.items():
-            for player_name, player_stats in players_data.items():
-                player_stat_copy = player_stats.copy()
-                player_stat_copy['Year'] = year
-                flattened_data.append(player_stat_copy)
-        return flattened_data
-
-    def process_data(self, data):
-        flattened_data = self.flatten_data(data)
-        df = pd.DataFrame(flattened_data)
-        
+    def process_data(self, data_df):
         result_dict = {}
+        data_df = data_df.transpose()
         
-        for year, group in df.groupby('Year'):
-            efficiency_metrics = {
-                "Y/A": [], "TD/A": [], "TD/G": [], 
-                "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
-            }
+        efficiency_metrics = {
+            "Y/A": [], "TD/A": [], "TD/G": [], 
+            "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
+        }
 
-            for _, player in group.iterrows():
-                for metric in efficiency_metrics.keys():
-                    if player.get(metric) is not None: 
-                        efficiency_metrics[metric].append(round(player.get(metric), 2))
+        for _, player in data_df.iterrows():
+            for metric in efficiency_metrics.keys():
+                if player.get(metric) is not None: 
+                    efficiency_metrics[metric].append(round(player.get(metric), 2))
 
-            for metric, values in efficiency_metrics.items():
-                if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
-                    group[metric] = values
-            
-            result_dict[str(year)] = group
+        for metric, values in efficiency_metrics.items():
+            if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
+                data_df[metric] = values
 
-        return result_dict
+        return data_df
 
     def get_player_names(self, year=None):
         player_names = []

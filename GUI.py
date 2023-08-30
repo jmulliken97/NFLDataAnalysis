@@ -195,13 +195,14 @@ class Ui_MainWindow(object):
         self.pushButton_all.clicked.connect(self.scrape_all)
         self.pushButton_plot.clicked.connect(self.plot_stats)
         self.pushButton_distro.clicked.connect(self.distribution)
-        self.comboBox_year.currentIndexChanged.connect(self.update_table)
         self.pushButton_correlation.clicked.connect(self.correlation_analysis)
         self.pushButton_display_stats.clicked.connect(self.display_stats)
         self.pushButton_detect_outliers.clicked.connect(self.detect_outliers)
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
         self.comboBox_sort.currentIndexChanged.connect(self.update_table)
+        self.comboBox_selector.currentTextChanged.connect(self.load_data_from_s3)
+        self.comboBox_year.currentIndexChanged.connect(self.year_changed)
         self.comboBox_team.currentIndexChanged.connect(self.update_roster_table)
 
 
@@ -299,25 +300,43 @@ class Ui_MainWindow(object):
 
     def update_table(self):
         self.tableWidget.clearContents()
-        selected_stat_type = self.comboBox_selector.currentText()
         year = self.comboBox_year.currentText()
+        
         if year in self.data_processor.data_dict:
             data_df = self.data_processor.data_dict[year]
             sort_column = self.comboBox_sort.currentText()
+            
+            # Sorting the dataframe by the selected column (if necessary)
             if sort_column in data_df.columns:
                 data_df = data_df.sort_values(by=sort_column, ascending=False)
-            else:
-                print(f"Warning: Column '{sort_column}' not found in dataframe. Data not sorted.")
-            
+                
             display_columns = [col for col in data_df.columns if col != "Year"]
             self.tableWidget.setRowCount(len(data_df))
             self.tableWidget.setColumnCount(len(display_columns))
             self.tableWidget.setHorizontalHeaderLabels(display_columns)
+            
             for i, (index, row) in enumerate(data_df[display_columns].iterrows()):
-                for j, cell in enumerate(row):
-                    self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(cell)))
-        else:
-            print(f"No data for year {year} and stat type {selected_stat_type}")
+                for j, value in enumerate(row):
+                    self.tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(str(value)))
+
+    def year_changed(self):
+        selected_stat_type = self.comboBox_selector.currentText()
+        year = self.comboBox_year.currentText()
+        
+        if year in self.data_processor.data_dict:
+            data_df = self.data_processor.data_dict[year]
+            
+            # Update the sort combo box
+            self.comboBox_sort.clear()
+            sort_columns = [col for col in data_df.columns if col not in ["Player", "Team", "Year"]]
+            self.comboBox_sort.addItems(sort_columns)
+            if 'Yds' in data_df.columns:
+                self.comboBox_sort.setCurrentText('Yds')
+            elif 'Pts' in data_df.columns:
+                self.comboBox_sort.setCurrentText('Pts')
+            
+            # Update the table
+            self.update_table()
             
     def export_to_excel(self, data, filename):
         # Convert the data to DataFrame if it's not already a DataFrame
