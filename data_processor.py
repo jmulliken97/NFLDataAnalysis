@@ -23,160 +23,15 @@ class DataProcessor:
         self.defense_headers = ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']
         self.kicking_headers = ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts']  
         
-    def load_and_process_data(self, stats_type):
-        data = self.data_loader.load_data_from_s3(stats_type)
+    def load_and_process_data(self, preloaded_data, stats_type):
+        data = preloaded_data.get(stats_type)
+        if not data:
+            raise ValueError(f"No data found for stats type: {stats_type}")
         self.data_dict = self.process_data(data)
-
         for key, value in self.data_dict.items():
             print(key, ":", value.keys())
-
         return list(self.data_dict.keys())
 
-    def determine_stats_type(self, stats):
-        stats_keys = stats.keys()
-        stat_types = [("passing", self.passing_headers), 
-                      ("rushing", self.rushing_headers), 
-                      ("receiving", self.receiving_headers), 
-                      ("defense", self.defense_headers), 
-                      ("kicking", self.kicking_headers)]
-
-        for stat_type, headers in stat_types:
-            if all(item in stats_keys for item in headers):
-                return stat_type
-
-        return "unknown"
-
-    def calculate_score(self, player_data):
-        player = player_data.copy()
-        
-        def determine_stats_type(stats):
-            stats_keys = stats.keys()
-            stat_types = [("passing", ['Player', 'Team', 'Gms', 'Att', 'Cmp', 'Pct', 'Yds', 'YPA', 'TD', 'TD%', 'Int', 'Int%', 'Lg TD', 'Lg', 'Sack', 'Loss', 'Rate']), 
-                        ("rushing", ['Player', 'Team', 'Gms', 'Att', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD']),
-                        ("receiving", ['Player', 'Team', 'Gms', 'Rec', 'Yds', 'Avg', 'YPG', 'Lg TD', 'Lg', 'TD', 'FD', 'Tar', 'YAC']),
-                        ("defense", ['Player', 'Team', 'Gms', 'Int', 'Yds', 'Avg', 'Lg TD', 'Lg', 'TD', 'Solo', 'Ast', 'Tot', 'Sack', 'YdsL']),
-                        ("kicking", ['Player', 'Team', 'Gms', 'PAT', 'FG', '0-19', '20-29', '30-39', '40-49', '50+', 'Lg TD', 'Lg', 'Pts'])]
-
-            for stat_type, headers in stat_types:
-                if all(item in stats_keys for item in headers):
-                    return stat_type
-            return "unknown"
-
-        stats_type = determine_stats_type(player_data)
-        weights = None
-
-        if stats_type == "passing":
-            weights = {
-                "Yds": 0.05,
-                "YPA": 0.15,
-                "Pct": 0.15,
-                "TD:INT Ratio": 0.2,
-                "Rate": 0.05,
-                "Sack": -0.05,
-                "Loss": -0.05,
-                "ANY/A": 0.2,
-            }
-            for key in ["Yds", "YPA", "Pct", "TD", "Int", "Rate", "Sack", "Loss", "Att"]:
-                if key in player:
-                    player[key] = 0.0 if player[key] == '--' else float(player[key])
-                                
-            if player.get("Int") != 0:
-                player["TD:INT Ratio"] = round(player["TD"] / player["Int"], 2)
-            else:
-                player["TD:INT Ratio"] = round(player["TD"], 2)
-
-            player["ANY/A"] = round((player["Yds"] + 20 * player["TD"] - 45 * player["Int"] - player["Loss"]) / (player["Att"] + player["Sack"]), 2)
-
-        elif stats_type == "rushing":
-            player["Y/A"] = player["Yds"] / player["Att"] if player["Att"] else 0
-            player["TD/A"] = player["TD"] / player["Att"] if player["Att"] else 0
-            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
-
-            weights = {
-                "Yds": 0.15,
-                "Att": 0.15,
-                "TD": 0.15,
-                "Avg": 0.15,
-                "YPG": 0.1,
-                "Lg": 0.05,
-                "Y/A": 0.1,
-                "TD/A": 0.1,
-                "TD/G": 0.1
-            }
-
-        elif stats_type == "receiving":
-            player["Y/R"] = player["Yds"] / player["Rec"] if player["Rec"] else 0
-            player["TD/R"] = player["TD"] / player["Rec"] if player["Rec"] else 0
-            player["Y/Tgt"] = player["Yds"] / player["Tar"] if player["Tar"] else 0
-            player["Rec/Tgt"] = player["Rec"] / player["Tar"] if player["Tar"] else 0
-            player["TD/G"] = player["TD"] / player["Gms"] if player["Gms"] else 0
-
-            weights = {
-                "Rec": 0.1,
-                "Yds": 0.1,
-                "TD": 0.15,
-                "Avg": 0.1,
-                "YPG": 0.1,
-                "Lg": 0.1,
-                "Tar": 0.05,
-                "YAC": 0.05,
-                "Y/R": 0.05,
-                "TD/R": 0.05,
-                "Y/Tgt": 0.05,
-                "Rec/Tgt": 0.05,
-                "TD/G": 0.1
-            }
-            
-        elif stats_type == "defense":
-            weights = {
-                "Int": 0.15,
-                "Yds": 0.10,
-                "Avg": 0.10,
-                "Lg TD": 0.10,
-                "Lg": 0.05,
-                "TD": 0.10,
-                "Solo": 0.10,
-                "Ast": 0.05,
-                "Tot": 0.10,
-                "Sack": 0.15,
-                "YdsL": 0.10
-            }
-            for key in ["Gms", "Int", "Yds", "Avg", "TD", "Solo", "Ast", "Tot", "Sack", "YdsL"]:
-                if key in player:
-                    player[key] = 0.0 if player[key] == '--' else float(player[key])
-                    
-        elif stats_type == "kicking":
-            weights = {
-                "PAT": 0.15,
-                "FG": 0.25,
-                "0-19": 0.05,
-                "20-29": 0.05,
-                "30-39": 0.05,
-                "40-49": 0.05,
-                "50+": 0.10,
-                "Lg": 0.10,
-                "Pts": 0.30
-            }
-            for key in ["Gms", "Lg", "Pts"]:
-                if key in player:
-                    player[key] = 0.0 if player[key] == '--' else float(player[key])
-            for key in ["PAT", "FG", "0-19", "20-29", "30-39", "40-49", "50+"]:
-                if key in player:
-                    successes, attempts = map(int, (0 if val == '--' else val for val in player[key].split('/')))
-                    player[key] = successes / attempts if attempts != 0 else 0
-
-        if weights is None:
-            return None, None, None, {}, "unknown"
-
-        score = 0
-        for stat, weight in weights.items():
-            if player.get(stat) is not None:
-                score += player.get(stat, 0) * weight
-
-        if stats_type == "passing":
-            return round(score, 2), player.get("TD:INT Ratio"), player.get("ANY/A"), player, stats_type
-        elif stats_type == "rushing" or stats_type == "receiving" or stats_type == "defense" or stats_type == "kicking":
-            return round(score, 2), None, None, player, stats_type
     
     def flatten_data(self, data):
         flattened_data = []
@@ -194,31 +49,16 @@ class DataProcessor:
         result_dict = {}
         
         for year, group in df.groupby('Year'):
-            scores = []
-            td_int_ratios = []
-            any_as = []
             efficiency_metrics = {
                 "Y/A": [], "TD/A": [], "TD/G": [], 
                 "Y/R": [], "TD/R": [], "Y/Tgt": [], "Rec/Tgt": []
             }
 
             for _, player in group.iterrows():
-                score, td_int_ratio, any_a, updated_player, stats_type = self.calculate_score(player)
-                scores.append(score)
-                if stats_type == "passing":
-                    if td_int_ratio is not None:
-                        td_int_ratios.append(round(td_int_ratio, 2))
-                    if any_a is not None:
-                        any_as.append(round(any_a, 2))
                 for metric in efficiency_metrics.keys():
-                    if updated_player.get(metric) is not None: 
-                        efficiency_metrics[metric].append(round(updated_player.get(metric), 2))
+                    if player.get(metric) is not None: 
+                        efficiency_metrics[metric].append(round(player.get(metric), 2))
 
-            group['Score'] = scores
-            if td_int_ratios:
-                group['TD:INT Ratio'] = td_int_ratios
-            if any_as:
-                group['ANY/A'] = any_as
             for metric, values in efficiency_metrics.items():
                 if values and values[0] is not None:  # only append if the list is not empty and the first value is not None
                     group[metric] = values
@@ -226,7 +66,7 @@ class DataProcessor:
             result_dict[str(year)] = group
 
         return result_dict
-    
+
     def get_player_names(self, year=None):
         player_names = []
         df = self.data_dict['All']

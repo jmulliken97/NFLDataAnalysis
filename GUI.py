@@ -6,6 +6,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns
 import webscraper
 import penalties
+from data_loader import DataLoader
+from roster import load_roster
 import pandas as pd
 import openpyxl
 
@@ -13,11 +15,14 @@ bucket_name = "statsbucketpython"
 
 class Ui_MainWindow(object):
     def __init__(self):
+        self.data_loader = DataLoader(bucket_name)
+        self.preloaded_data = self.data_loader.get_data()
         self.textEdit = QtWidgets.QTextEdit()  
         self.data_processor = DataProcessor(bucket_name)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
-        
+        self.rosters_data = load_roster()
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1000, 800)
@@ -110,6 +115,7 @@ class Ui_MainWindow(object):
         self.comboBox_selector.setGeometry(QtCore.QRect(95, 20, 100, 31))
         self.comboBox_selector.addItems(['Passing', 'Rushing', 'Receiving', 'Defense', 'Kicking'])
         self.comboBox_selector.setObjectName("comboBox_selector")
+        self.comboBox_selector.setCurrentIndex(0)
         
         self.comboBox_sort = QtWidgets.QComboBox(self.json_tab)
         self.comboBox_sort.setGeometry(QtCore.QRect(205, 20, 75, 31))
@@ -118,10 +124,6 @@ class Ui_MainWindow(object):
         self.pushButton_legend = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_legend.setGeometry(QtCore.QRect(600, 20, 200, 31))
         self.pushButton_legend.setObjectName("pushButton_legend")
-        
-        self.pushButton_load = QtWidgets.QPushButton(self.json_tab)
-        self.pushButton_load.setGeometry(QtCore.QRect(800, 60, 175, 30))
-        self.pushButton_load.setObjectName("pushButton_load")
 
         self.pushButton_plot = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_plot.setGeometry(QtCore.QRect(800, 100, 175, 30))
@@ -139,10 +141,6 @@ class Ui_MainWindow(object):
         self.pushButton_display_stats.setGeometry(QtCore.QRect(800, 220, 175, 30)) 
         self.pushButton_display_stats.setObjectName("pushButton_display_stats")
 
-        # self.pushButton_handle_missing = QtWidgets.QPushButton(self.json_tab)
-        # self.pushButton_handle_missing.setGeometry(QtCore.QRect(800, 140, 150, 30)) 
-        # self.pushButton_handle_missing.setObjectName("pushButton_handle_missing")
-
         self.pushButton_detect_outliers = QtWidgets.QPushButton(self.json_tab)
         self.pushButton_detect_outliers.setGeometry(QtCore.QRect(800, 260, 175, 30)) 
         self.pushButton_detect_outliers.setObjectName("pushButton_detect_outliers")
@@ -157,15 +155,33 @@ class Ui_MainWindow(object):
         # add predict tab to the tab widget
         self.tabWidget.addTab(self.predict_tab, "Predictions")
         
+        # Roster Tab
+        self.roster_tab = QtWidgets.QWidget()
+        self.roster_tab.setObjectName("roster_tab")
+        
+        # Add widgets to the roster tab
+        self.comboBox_team = QtWidgets.QComboBox(self.roster_tab)
+        self.comboBox_team.setGeometry(QtCore.QRect(10, 20, 100, 31))
+        self.comboBox_team.setObjectName("comboBox_team")
+        self.comboBox_team.addItems(list(self.rosters_data.keys()))
+
+        self.tableWidget_roster = QtWidgets.QTableWidget(self.roster_tab)
+        self.tableWidget_roster.setGeometry(QtCore.QRect(10, 60, 965, 690))
+        self.tableWidget_roster.setColumnCount(3) 
+        self.tableWidget_roster.setHorizontalHeaderLabels(["Number", "Name", "Position"])
+
+        # add roster tab to the tab widget
+        self.tabWidget.addTab(self.roster_tab, "Roster")
+        
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.load_data_from_s3()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "NFL Stats Analysis"))
         self.pushButton_all.setText(_translate("MainWindow", "Scrape Data"))
-        self.pushButton_load.setText(_translate("MainWindow", "Load Data"))
         self.pushButton_plot.setText(_translate("MainWindow", "Plot Stats"))
         self.pushButton_distro.setText(_translate("MainWindow", "Distribution"))
         self.pushButton_legend.setText(_translate("MainWindow", "Show Legend"))
@@ -177,7 +193,6 @@ class Ui_MainWindow(object):
 
         # Connect button to function
         self.pushButton_all.clicked.connect(self.scrape_all)
-        self.pushButton_load.clicked.connect(self.load_data_from_s3)
         self.pushButton_plot.clicked.connect(self.plot_stats)
         self.pushButton_distro.clicked.connect(self.distribution)
         self.comboBox_year.currentIndexChanged.connect(self.update_table)
@@ -187,6 +202,8 @@ class Ui_MainWindow(object):
         self.pushButton_legend.clicked.connect(self.show_legend)
         self.pushButton_penalties.clicked.connect(self.scrape_penalties)
         self.comboBox_sort.currentIndexChanged.connect(self.update_table)
+        self.comboBox_team.currentIndexChanged.connect(self.update_roster_table)
+
 
     def scrape_all(self):
         stat = []
@@ -245,7 +262,7 @@ class Ui_MainWindow(object):
 
     def load_data_from_s3(self):
         stat_type = self.comboBox_selector.currentText()
-        self.data_processor.load_and_process_data(stat_type)
+        self.data_processor.load_and_process_data(self.preloaded_data, stat_type)
         self.comboBox_year.clear()
         self.comboBox_year.addItems(sorted(self.data_processor.data_dict.keys(), key=int))
         if "2022" in self.data_processor.data_dict:
@@ -554,4 +571,13 @@ class Ui_MainWindow(object):
             plot_window.setLayout(layout)
             plot_window.exec_()
 
+    def update_roster_table(self):
+        team_selected = self.comboBox_team.currentText()
+        roster = self.rosters_data.get(team_selected, [])
+
+        self.tableWidget_roster.setRowCount(len(roster))
+        for i, player in enumerate(roster):
+            self.tableWidget_roster.setItem(i, 0, QTableWidgetItem(player["Number"]))
+            self.tableWidget_roster.setItem(i, 1, QTableWidgetItem(player["Name"]))
+            self.tableWidget_roster.setItem(i, 2, QTableWidgetItem(player["Position"]))
 

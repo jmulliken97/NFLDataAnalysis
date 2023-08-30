@@ -17,9 +17,17 @@ class DataLoader:
             'Defense': 'defense_stats_all_years.json',
             'Kicking': 'kicking_stats_all_years.json'
         }
+        self.preload_data()
 
-    def load_data_from_s3(self, stats_type):
-        self.data_dict = {}
+    def preload_data(self):
+        for stats_type in self.stats_file_mapping.keys():
+            self.data_dict[stats_type] = self._load_data_from_s3(stats_type)
+    
+    def get_data(self):
+        return self.data_dict
+
+    def _load_data_from_s3(self, stats_type):
+        data_for_stat = {}
         
         file_pattern = self.stats_file_mapping.get(stats_type, '')
         if not file_pattern:
@@ -36,11 +44,9 @@ class DataLoader:
                 
                 for year, year_data in data.items():
                     df = pd.DataFrame.from_records(year_data)
-                    self.data_dict[year] = df
+                    data_for_stat[year] = df
                 break
 
-        return self.data_dict
+        return data_for_stat
 
-    def get_data(self):
-        return self.data_dict
 

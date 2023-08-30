@@ -52,7 +52,7 @@ def fetch_roster_data(team_code):
 
     return players
 
-def get_data_from_s3():
+def load_roster():
     try:
         response = s3.get_object(Bucket=BUCKET_NAME, Key=S3_KEY)
         existing_data = json.loads(response['Body'].read().decode('utf-8'))
@@ -66,7 +66,7 @@ def update_all_teams():
         print(f"Fetching data for {team_code}...")
         all_teams_data[team_code] = fetch_roster_data(team_code)
 
-    existing_data = get_data_from_s3()
+    existing_data = load_roster()
 
     if existing_data != all_teams_data:
         print("Data has changed. Updating S3 bucket...")
