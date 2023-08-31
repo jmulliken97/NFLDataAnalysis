@@ -37,22 +37,43 @@ df = df[~df['Player'].isin(drop_entries)]
 df['Att_Pct_Interaction'] = df['Att'] * df['CompletionPercentage']
 
 # Define features and target
-features = ['Gms', 'Cmp', 'Att', 'QB_TD', 'Int', 'CompletionPercentage', 
-            'YardsPerAttempt', 'TouchdownPercentage', 
-            'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec', 'SOS', 
-            'Att_Pct_Interaction']
-X = df[features]
-y = df['QB_Yds']
+df_sorted = df.sort_values(by=['Player', 'Year'])
+
+lag_columns = ['Gms', 'Cmp', 'Att', 'QB_Yds', 'QB_TD', 'Int', 'Rate', 
+               'CompletionPercentage', 'YardsPerAttempt', 'TouchdownPercentage', 
+               'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec']
+
+for col in lag_columns:
+    df_sorted[f"{col}_prev_year"] = df_sorted.groupby('Player')[col].shift(1)
+    df_sorted[f"{col}_diff"] = df_sorted[col] - df_sorted[f"{col}_prev_year"]
+
+# Define the new set of features
+selected_features = [
+    'Year', 'Gms', 'Cmp', 'Att', 'QB_Yds', 'QB_TD', 'Int', 'Rate', 
+    'CompletionPercentage', 'YardsPerAttempt', 'TouchdownPercentage', 
+    'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec', 'SOS',
+    'Gms_prev_year', 'Cmp_prev_year', 'Att_prev_year', 'QB_Yds_prev_year', 'QB_TD_prev_year', 
+    'Int_prev_year', 'Rate_prev_year', 'CompletionPercentage_prev_year', 
+    'YardsPerAttempt_prev_year', 'TouchdownPercentage_prev_year', 
+    'InterceptionPercentage_prev_year', 'Rec_prev_year', 'Receiver_Yds_prev_year', 
+    'Receiver_TD_prev_year', 'AvgYdsPerRec_prev_year', 
+    'Gms_diff', 'Cmp_diff', 'Att_diff', 'QB_Yds_diff', 'QB_TD_diff', 'Int_diff', 'Rate_diff', 
+    'CompletionPercentage_diff', 'YardsPerAttempt_diff', 'TouchdownPercentage_diff', 
+    'InterceptionPercentage_diff', 'Rec_diff', 'Receiver_Yds_diff', 'Receiver_TD_diff', 
+    'AvgYdsPerRec_diff'
+]
+
+X_new = df_sorted[selected_features]
+y_new = df_sorted['QB_Yds']
+
+# Handle missing values and scale the features
+imputer = SimpleImputer(strategy='mean')
+X_imputed = imputer.fit_transform(X_new)
 
 scaler = StandardScaler()
-X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+X_scaled = scaler.fit_transform(X_imputed)
 
-# Handle NaN values by imputation
-imputer = SimpleImputer(strategy='mean')
-X_imputed = imputer.fit_transform(X_scaled)
-X_imputed_df = pd.DataFrame(X_imputed, columns=X_scaled.columns)
-
-# Parameter distributions for RandomizedSearchCV
+# Hyperparameter tuning and training
 param_distributions = {
     'n_estimators': randint(50, 250),
     'learning_rate': uniform(0.01, 0.2),
@@ -63,26 +84,19 @@ param_distributions = {
     'max_features': ['sqrt', 'log2', None]
 }
 
-# Initialize RandomizedSearchCV with K-Fold CV
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 random_search = RandomizedSearchCV(GradientBoostingRegressor(n_iter_no_change=10, validation_fraction=0.1, random_state=42),
                                    param_distributions=param_distributions, 
-                                   n_iter=1000, scoring='neg_mean_squared_error', 
+                                   n_iter=100, scoring='neg_mean_squared_error', 
                                    n_jobs=-1, cv=kf, verbose=1, random_state=42)
 
-# Fit the model with the data
-random_search.fit(X_imputed_df, y)
+random_search.fit(X_scaled, y_new)
 
-# Get the best parameters from the random search
 best_params = random_search.best_params_
-
-# Initialize and train the Gradient Boosting Regressor with the best parameters
 best_model = GradientBoostingRegressor(**best_params, n_iter_no_change=10, validation_fraction=0.1, random_state=42)
-best_model.fit(X_imputed_df, y)
+best_model.fit(X_scaled, y_new)
 
-# Predict on the entire dataset (optional)
-y_pred = best_model.predict(X_imputed_df)
+y_pred = best_model.predict(X_scaled)
+mse = mean_squared_error(y_new, y_pred)
 
-# Calculate and print the Mean Squared Error
-mse = mean_squared_error(y, y_pred)
 print(f"Mean Squared Error with Best Parameters: {mse}")
