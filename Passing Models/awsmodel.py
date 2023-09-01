@@ -1,13 +1,16 @@
 import pandas as pd
 from sklearn.model_selection import KFold, RandomizedSearchCV
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error, make_scorer
+from sklearn.metrics import mean_squared_error
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from scipy.stats import uniform, randint
 
 # Load the dataset
-df = pd.read_json("./enriched_qb_receivers_with_sos_approximated.json", orient="records")
+df = pd.read_json("./enriched_data_with_age_exp.json", orient="records")
+
+# Convert "R" to 0 in the 'Exp' column
+df['Exp'] = df['Exp'].replace("R", 0).astype(float)
 
 # Load the Outliers data from the Excel sheet
 xls = pd.ExcelFile("./Passing Info.xlsx")
@@ -41,7 +44,8 @@ df_sorted = df.sort_values(by=['Player', 'Year'])
 
 lag_columns = ['Gms', 'Cmp', 'Att', 'QB_Yds', 'QB_TD', 'Int', 'Rate', 
                'CompletionPercentage', 'YardsPerAttempt', 'TouchdownPercentage', 
-               'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec']
+               'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec', 
+               'Age', 'Exp']
 
 for col in lag_columns:
     df_sorted[f"{col}_prev_year"] = df_sorted.groupby('Player')[col].shift(1)
@@ -51,17 +55,12 @@ for col in lag_columns:
 selected_features = [
     'Year', 'Gms', 'Cmp', 'Att', 'QB_Yds', 'QB_TD', 'Int', 'Rate', 
     'CompletionPercentage', 'YardsPerAttempt', 'TouchdownPercentage', 
-    'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec', 'SOS',
-    'Gms_prev_year', 'Cmp_prev_year', 'Att_prev_year', 'QB_Yds_prev_year', 'QB_TD_prev_year', 
-    'Int_prev_year', 'Rate_prev_year', 'CompletionPercentage_prev_year', 
-    'YardsPerAttempt_prev_year', 'TouchdownPercentage_prev_year', 
-    'InterceptionPercentage_prev_year', 'Rec_prev_year', 'Receiver_Yds_prev_year', 
-    'Receiver_TD_prev_year', 'AvgYdsPerRec_prev_year', 
-    'Gms_diff', 'Cmp_diff', 'Att_diff', 'QB_Yds_diff', 'QB_TD_diff', 'Int_diff', 'Rate_diff', 
-    'CompletionPercentage_diff', 'YardsPerAttempt_diff', 'TouchdownPercentage_diff', 
-    'InterceptionPercentage_diff', 'Rec_diff', 'Receiver_Yds_diff', 'Receiver_TD_diff', 
-    'AvgYdsPerRec_diff'
+    'InterceptionPercentage', 'Rec', 'Receiver_Yds', 'Receiver_TD', 'AvgYdsPerRec', 'SOS', 
+    'Age', 'Exp'
 ]
+
+for col in lag_columns:
+    selected_features.extend([f"{col}_prev_year", f"{col}_diff"])
 
 X_new = df_sorted[selected_features]
 y_new = df_sorted['QB_Yds']
@@ -100,3 +99,4 @@ y_pred = best_model.predict(X_scaled)
 mse = mean_squared_error(y_new, y_pred)
 
 print(f"Mean Squared Error with Best Parameters: {mse}")
+

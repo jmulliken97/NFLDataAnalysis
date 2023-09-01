@@ -3,47 +3,61 @@ from bs4 import BeautifulSoup
 import json
 import time
 
-# List of years and team abbreviations
 years = [i for i in range(1970, 2023)]
-teams = ["ari", "atl", "bal", "buf", "car", "chi", "cin", "cle", "dal", "den", "det", "gb", "hou", "ind", 
-         "jax", "kc", "lac", "lar", "lv", "mia", "min", "ne", "no", "nyg", "nyj", "phi", "pit", "sea", 
-         "sf", "tb", "ten", "was"]
-
 all_data = []
 
+def get_teams_for_year(year):
+    url = f"https://www.jt-sw.com/football/pro/rosters.nsf/By/Season?OpenDocument&Season={year}"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    ul = soup.find('ul')
+    
+    if not ul:
+        print(f"Unordered list not found for year {year}")
+        return []
+    
+    team_links = ul.find_all('a')
+    return [link['href'].split('/')[-1].split('-')[-1] for link in team_links]
+
 for year in years:
+    teams = get_teams_for_year(year)
+
     for team in teams:
-        # Construct the URL
         url = f"https://www.jt-sw.com/football/pro/rosters.nsf/Annual/{year}-{team}"
-        
-        # Fetch the content of the URL
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Find the table
         table = soup.find('table', {'cellpadding': '4'})
         
         # If table exists, extract the data
         if table:
             rows = table.find_all('tr')
+            
+            headers = [header.text for header in rows[0].find_all('th')]
+            if not all(x in headers for x in ["Pos", "Player", "Exp", "DOB"]):
+                print(f"Expected headers not found in {year}-{team}. Skipping team.")
+                continue
+
+            pos_index = headers.index("Pos")
+            player_index = headers.index("Player")
+            exp_index = headers.index("Exp")
+            dob_index = headers.index("DOB")
+            
             for row in rows[1:]:  # skipping the header row
                 cols = row.find_all('td')
                 player_data = {
                     "Year": year,
                     "Team": team.upper(),
-                    "Pos": cols[0].text.strip(),
-                    "Player": cols[2].text.strip(),
-                    "Exp": cols[6].text.strip(),
-                    "DOB": cols[7].text.strip()
+                    "Pos": cols[pos_index].text.strip(),
+                    "Player": cols[player_index].text.strip(),
+                    "Exp": cols[exp_index].text.strip(),
+                    "DOB": cols[dob_index].text.strip()
                 }
                 all_data.append(player_data)
         else:
             print(f"Table not found for URL: {url}")
         
-        # Introduce a pause between requests
         time.sleep(1)
 
-# Save the data to a JSON file
 with open('all_scraped_data.json', 'w') as f:
     json.dump(all_data, f)
-
