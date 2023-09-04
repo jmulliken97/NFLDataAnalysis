@@ -9,3 +9,4 @@ Passing Info.xlsx
 testing/__init__.py
 Scraping/__init__.py
 __init__.py
+*.csv
